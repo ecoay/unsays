@@ -238,10 +238,13 @@ export class Table extends DurableObject {
     if (this.connected().length === 0) return this.stopGame();
     this.maintainBots();
     this.round++;
-    this.acro = makeAcronym(3 + ((this.round - 1) % 5));
+    const len = 3 + ((this.round - 1) % 5);
+    this.acro = makeAcronym(len);
     this.entries = []; this.votes = {}; this.order = null; this.res = null;
-    this.setPhase('compose', this.T.compose, () => this.startVote());
-    for (const b of this.bots()) this.later(this.T.compose * rnd(b.speed * .45, Math.min(.95, b.speed + .2)), () => this.botEntry(b));
+    // Long acronyms get more time: 1.5x for 6 letters, 2x for 7 (as in the original IRC game).
+    const secs = this.T.compose * (len >= 7 ? 2 : len === 6 ? 1.5 : 1);
+    this.setPhase('compose', secs, () => this.startVote());
+    for (const b of this.bots()) this.later(secs * rnd(b.speed * .45, Math.min(.95, b.speed + .2)), () => this.botEntry(b));
     this.botChat('compose', .5);
   }
 
