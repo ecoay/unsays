@@ -3,6 +3,9 @@
   "name": "unsays",
   "main": "src/worker.js",
   "compatibility_date": "2025-09-01",
+  // Serve on unsays.<account>.workers.dev as well as any custom domain.
+  "workers_dev": true,
+  "preview_urls": true,
   // Static client (index.html, shared.js). Requests that don't match a file fall through to the Worker.
   "assets": { "directory": "./public", "binding": "ASSETS" },
   "durable_objects": {
