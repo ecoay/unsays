@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { PACKS, SPEEDS } from '../public/shared.js';
+import { db, now } from './db.js';
 
 // One Lobby object holds every table's settings and live status, and pushes the list to lobby viewers.
 
@@ -29,7 +30,24 @@ export class Lobby extends DurableObject {
       for (const t of DEFAULT_TABLES) this.tables.set(t.id, { ...t, special: t.pack !== 'all', custom: false, createdAt: 0 });
       for (const t of saved) if (t.custom) this.tables.set(t.id, t);
       for (const t of this.tables.values()) t.live = { humans: 0, bots: 0, names: [], round: 0, acro: '', phase: 'waiting', emptySince: Date.now() };
+      await this.syncGuilds();
     });
+  }
+
+  // Each guild with an active Guild Pass gets a permanent members-only table.
+  async syncGuilds() {
+    const DB = await db(this.env)?.catch(e => { console.error('db', e); return null; });
+    if (!DB) return;
+    const rows = (await DB.prepare('SELECT id, slug, name, tag, speed, mode FROM guilds WHERE pass_until > ?').bind(now()).all()).results;
+    const want = new Set(rows.map(g => 'g-' + g.slug));
+    for (const [id, t] of this.tables) if (t.guild && !want.has(id)) this.tables.delete(id);
+    for (const g of rows) {
+      const id = 'g-' + g.slug, old = this.tables.get(id);
+      this.tables.set(id, { id, name: g.name, pack: 'all', speed: SPEEDS[g.speed] ? g.speed : 'turbo', mode: g.mode === 'clean' ? 'clean' : 'adult', target: 30,
+        special: true, custom: false, guild: { id: g.id, tag: g.tag, slug: g.slug }, createdAt: 0,
+        live: old?.live || { humans: 0, bots: 0, names: [], round: 0, acro: '', phase: 'waiting', emptySince: Date.now() } });
+    }
+    this.push();
   }
 
   async save() {
@@ -39,7 +57,7 @@ export class Lobby extends DurableObject {
   // Busy tables first, then the house tables in their usual order.
   list() {
     return [...this.tables.values()].sort((a, b) => b.live.humans - a.live.humans).map(t => ({
-      id: t.id, name: t.name, pack: t.pack, speed: t.speed, mode: t.mode, target: t.target, special: t.special, custom: t.custom,
+      id: t.id, name: t.name, pack: t.pack, speed: t.speed, mode: t.mode, target: t.target, special: t.special, custom: t.custom, guild: t.guild || null,
       humans: t.live.humans, bots: t.live.bots, names: t.live.names, round: t.live.round, acro: t.live.acro, phase: t.live.phase,
     }));
   }
@@ -78,6 +96,8 @@ export class Lobby extends DurableObject {
       return new Response(null, { status: 101, webSocket: client });
     }
 
+    if (path === '/internal/guilds/sync') { await this.syncGuilds(); return json({ ok: true }); }
+
     if (path === '/api/tables' && req.method === 'GET') { await this.sweep(); return json({ tables: this.list() }); }
 
     if (path === '/api/tables' && req.method === 'POST') {
@@ -91,7 +111,9 @@ export class Lobby extends DurableObject {
       const target = body.target === 15 || body.target === '15' ? 15 : 30;
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'table';
       const id = `${slug}-${crypto.randomUUID().slice(0, 6)}`;
-      const host = /^[a-z0-9-]{8,40}$/i.test(String(body.cid || '')) ? String(body.cid) : null;
+      // The Worker sets x-player from the session cookie; older clients only send cid.
+      const cid = req.headers.get('x-player') || String(body.cid || '');
+      const host = /^[a-z0-9-]{8,40}$/i.test(cid) ? cid : null;
       const t = { id, name, pack, speed, mode, target, special: pack !== 'all', custom: true, host, createdAt: Date.now(),
         live: { humans: 0, bots: 0, names: [], round: 0, acro: '', phase: 'waiting', emptySince: Date.now() } };
       this.tables.set(id, t);

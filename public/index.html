@@ -3,8 +3,33 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>unsays</title>
-<meta name="description" content="Things you can't unsay. A fast multiplayer acronym game.">
+<title>unsays: the free multiplayer acronym party game</title>
+<meta name="description" content="Things you can't unsay. Everyone gets the same letters, writes the funniest line, and votes. A free Acrophobia-style party game in your browser, with bots so a table is always ready.">
+<link rel="canonical" href="https://unsays.com/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:site_name" content="unsays">
+<meta property="og:type" content="website">
+<meta property="og:title" content="unsays: things you can't unsay">
+<meta property="og:description" content="A free multiplayer acronym party game. Same letters, funniest line wins. Play in your browser.">
+<meta property="og:url" content="https://unsays.com/">
+<meta property="og:image" content="https://unsays.com/og.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="unsays: things you can't unsay">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="unsays: things you can't unsay">
+<meta name="twitter:description" content="A free multiplayer acronym party game. Same letters, funniest line wins.">
+<meta name="twitter:image" content="https://unsays.com/og.png">
+<meta name="theme-color" content="#06050d">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[
+{"@type":"WebSite","@id":"https://unsays.com/#site","name":"unsays","url":"https://unsays.com/","description":"Things you can't unsay. A free multiplayer acronym party game."},
+{"@type":"VideoGame","name":"unsays","url":"https://unsays.com/","image":"https://unsays.com/og.png","description":"A free multiplayer acronym party game in the style of Acrophobia. Everyone gets the same letters, writes the line they can't unsay, and votes for the funniest.","genre":["Party game","Word game"],"gamePlatform":"Web browser","applicationCategory":"Game","operatingSystem":"Any","playMode":"MultiPlayer","numberOfPlayers":{"@type":"QuantitativeValue","minValue":1,"maxValue":14},"offers":{"@type":"Offer","price":"0","priceCurrency":"USD","availability":"https://schema.org/InStock"}},
+{"@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What is unsays?","acceptedAnswer":{"@type":"Answer","text":"unsays is a free multiplayer party game you play in your browser. Everyone at the table gets the same random letters and writes a phrase whose words start with those letters, then everyone votes for the funniest line."}},
+{"@type":"Question","name":"Is unsays free?","acceptedAnswer":{"@type":"Answer","text":"Yes. Every table, the global leaderboard and the Hall of Fame are free. Optional purchases are the Guild Pass ($2.99 a month) and flair, emoji and gift packs, and none of them add points or votes."}},
+{"@type":"Question","name":"Is unsays like Acrophobia?","acceptedAnswer":{"@type":"Answer","text":"Yes. unsays is a modern take on Acrophobia, the 1990s acronym game, with topics, a face-off final, guilds and monthly leaderboards."}}]}]}</script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -66,8 +91,75 @@ button{cursor:pointer}
 .wordmark .dot{color:var(--pink)}
 
 /* ---------- intro ---------- */
-#intro{min-height:calc(100vh - 32px);display:grid;place-items:center}
-.intro-card{width:min(560px,100%);padding:clamp(24px,5vw,44px);display:grid;gap:22px}
+#intro{display:flex;flex-direction:column;align-items:center;gap:28px}
+.intro-hero{min-height:calc(100vh - 32px);display:grid;grid-template-columns:minmax(0,1fr);place-items:center;width:100%}
+.about{width:min(860px,100%);padding:clamp(20px,4vw,36px);display:grid;gap:18px;color:var(--ink-dim)}
+.about h2{margin:0;font-family:var(--f-display);font-weight:600;font-size:clamp(20px,3.4vw,26px);color:var(--ink);letter-spacing:-.02em}
+.about h3{margin:0;color:var(--ink);font-size:16px}
+.about p{margin:0;max-width:68ch}
+.about .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.about a,.site-foot a{color:var(--cyan)}
+.site-foot{display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:center;font-size:13px;color:var(--ink-faint);padding:8px 0 4px}
+.site-foot a{color:var(--ink-dim)}
+/* flair and account bits */
+.gtag{font-family:var(--f-mono);font-weight:600;color:var(--pink);margin-right:4px;font-size:.9em}
+.ptitle{display:block;font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;color:var(--gold);text-transform:uppercase;line-height:1.2}
+.nf-holo{background:var(--holo);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:700}
+.nf-gold{background:linear-gradient(100deg,#fff1b8,#ffd36b 40%,#c98a00 70%,#ffe9a0);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:700;filter:drop-shadow(0 0 6px rgba(255,211,107,.45))}
+.nf-neon{color:#fff;font-weight:700;text-shadow:0 0 4px #fff,0 0 10px var(--pink),0 0 20px var(--pink);animation:flick 3s infinite}
+.nf-glitch{font-weight:700;text-shadow:2px 0 var(--cyan),-2px 0 var(--pink);animation:glitch 1.6s steps(2) infinite}
+.nf-fire{background:linear-gradient(0deg,#ff3d00,#ff9100 45%,#ffe57f);background-size:100% 200%;-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:700;animation:fire 1.2s ease-in-out infinite alternate}
+.nf-frost{background:linear-gradient(100deg,#e0f7ff,#8fdcff 50%,#fff);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:700;filter:drop-shadow(0 0 6px rgba(143,220,255,.6))}
+@keyframes flick{0%,92%,100%{opacity:1}94%{opacity:.4}96%{opacity:.9}}
+@keyframes glitch{0%{text-shadow:2px 0 var(--cyan),-2px 0 var(--pink)}50%{text-shadow:-2px 1px var(--cyan),2px -1px var(--pink)}}
+@keyframes fire{to{background-position:0 100%}}
+.entry.rv-spotlight{background:radial-gradient(120% 140% at 50% 0%,rgba(255,255,255,.18),transparent 60%),rgba(255,255,255,.035);box-shadow:0 0 34px rgba(255,255,255,.18)}
+.entry.rv-shake{animation:rise .35s both,quake .5s .4s 2}
+.entry.rv-sparkle{position:relative;overflow:hidden}
+.entry.rv-sparkle::after{content:"✦ ✧ ✦";position:absolute;right:12px;top:8px;color:var(--gold);letter-spacing:6px;animation:twinkle 1.2s ease-in-out infinite alternate;pointer-events:none}
+@keyframes quake{25%{transform:translateX(-4px) rotate(-.6deg)}75%{transform:translateX(4px) rotate(.6deg)}}
+@keyframes twinkle{from{opacity:.3}to{opacity:1}}
+.gifted{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-mono);font-size:11px;padding:2px 7px;border-radius:999px;background:rgba(255,211,107,.18);color:var(--gold)}
+.entry .acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.mini{border:1px solid var(--line);background:rgba(255,255,255,.04);border-radius:999px;padding:3px 9px;font-size:13px;line-height:1.3}
+.mini:hover{border-color:var(--gold)}
+.emojibar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.emojibar button{border:1px solid var(--line);background:rgba(255,255,255,.04);border-radius:12px;font-size:20px;line-height:1;padding:6px 8px;transition:transform .1s}
+.emojibar button:hover{transform:translateY(-2px);border-color:var(--line-hi)}
+.emojibar .more{font-size:12px;padding:8px 10px;color:var(--ink-dim)}
+.emo{position:fixed;z-index:62;pointer-events:none;font-size:34px;animation:emoup 2.2s ease-out forwards}
+.emo.big{font-size:60px;animation:emoboom 2.4s cubic-bezier(.2,.9,.3,1.4) forwards}
+.emo small{display:block;font-family:var(--f-mono);font-size:10px;color:var(--ink-dim);text-align:center}
+@keyframes emoup{0%{opacity:0;transform:translateY(10px) scale(.6)}15%{opacity:1;transform:translateY(0) scale(1.1)}100%{opacity:0;transform:translateY(-160px) scale(1)}}
+@keyframes emoboom{0%{opacity:0;transform:scale(.2) rotate(-20deg)}25%{opacity:1;transform:scale(1.25) rotate(8deg)}100%{opacity:0;transform:translateY(-200px) scale(1) rotate(0)}}
+.sheet{width:min(560px,100%);max-height:min(88vh,820px);overflow:auto;gap:12px}
+.sheet-head{display:flex;align-items:center;gap:10px}
+.sheet-tabs{display:flex;gap:6px;flex:1}
+.sheet-tabs button{border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 14px;font-size:13px;color:var(--ink-dim)}
+.sheet-tabs button[aria-selected="true"]{background:var(--ink);color:#0a0618;border-color:var(--ink)}
+.sheet-body{display:grid;gap:14px}
+.sheet h3{margin:6px 0 0;font-family:var(--f-display);font-weight:600;font-size:15px}
+.sheet p{margin:0}
+.ph{display:flex;align-items:center;gap:14px}
+.ph-name{font-family:var(--f-display);font-weight:600;font-size:20px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stats div{border:1px solid var(--line);border-radius:12px;padding:10px;display:grid}
+.stats b{font-family:var(--f-display);font-size:20px}
+.stats span{font-size:11px;color:var(--ink-dim);line-height:1.2}
+.small{font-size:13px}
+.skus{display:grid;gap:8px}
+.sku{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.sku.hot{border-color:rgba(255,79,210,.45);background:rgba(255,79,210,.06)}
+.tag.good{background:rgba(93,255,177,.14);color:var(--good)}
+.notice{border:1px solid rgba(255,211,107,.35);color:var(--gold);border-radius:12px;padding:8px 12px;font-size:13px}
+.gform{display:grid;gap:12px}
+.members{display:grid;gap:6px}
+.mrow{display:flex;align-items:center;gap:10px}
+.mrow span:nth-child(2){flex:1}
+.sheet select{background:rgba(0,0,0,.35);border:1px solid var(--line-hi);border-radius:12px;padding:10px 12px;width:100%}
+.sheet label{display:grid;gap:6px}
+.tcard .lock{color:var(--pink)}
+.intro-card{width:min(560px,100%);grid-template-columns:minmax(0,1fr);padding:clamp(24px,5vw,44px);display:grid;gap:22px}
 .intro-card .wordmark{font-size:clamp(52px,13vw,96px)}
 .tagline{font-family:var(--f-display);font-weight:400;font-size:clamp(17px,3.6vw,22px);color:var(--ink);text-wrap:balance}
 .tagline b{font-weight:600}
@@ -86,7 +178,7 @@ button{cursor:pointer}
 .topbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
 .topbar .wordmark{font-size:24px}
 .topbar .spacer{flex:1}
-.pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;border:1px solid var(--line);background:var(--glass);font-size:13px}
+.pill{color:inherit;display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;border:1px solid var(--line);background:var(--glass);font-size:13px}
 .live-dot{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 10px var(--good);animation:pulse 1.6s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.35}}
 
@@ -245,6 +337,7 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
 }
 @media (max-width: 520px){
   .steps{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,1fr)}
   .picks{grid-template-columns:1fr}
   .row2{grid-template-columns:1fr}
   .compose{flex-direction:column}
@@ -272,7 +365,7 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
 <div class="app">
   <!-- INTRO -->
   <section id="intro">
-    <div class="intro-card glass">
+    <div class="intro-hero"><div class="intro-card glass">
       <div class="wordmark">unsays<span class="dot">.</span></div>
       <div class="tagline">Everyone gets the same letters. Write the thing you <b>can't unsay</b>. Fastest wit wins.</div>
       <div class="steps">
@@ -286,7 +379,18 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
         <button class="btn prime" type="submit" id="introGo">Enter lobby</button>
       </form>
       <div class="proto-note">Bots fill empty seats until more people join, so a table is always ready.</div>
-    </div>
+    </div></div>
+    <article class="about glass">
+      <h2>What is unsays?</h2>
+      <p><b>unsays is a free multiplayer acronym party game that runs in your browser.</b> Everyone at the table gets the same random letters, like B-O-I-Q, and writes a phrase whose words start with them: "Bonus or I quit." The lines are shown without names, everyone votes for the funniest, and the round winner picks the next topic. It's a modern take on Acrophobia, the 1990s acronym game.</p>
+      <div class="cols">
+        <div><h3>Fast rounds</h3><p>Turbo tables give 30 seconds to write and 15 to vote. First to 30 points plays a 3-round face-off. <a href="/how-to-play">Full rules</a></p></div>
+        <div><h3>Topics you can't unsay</h3><p>Things you can't say to your boss, your ex or your mother-in-law, plus Disney, sports and more. <a href="/topics">All 16 topics</a></p></div>
+        <div><h3>Bragging rights</h3><p>A monthly global leaderboard, a permanent Hall of Fame and guilds with their own tables. <a href="/leaderboard">This month's top players</a></p></div>
+      </div>
+      <p>Free to play with no download, on phones and computers. Bots fill empty seats, up to 14 people fit at a table, and you can open a private table for friends. <a href="/faq">Questions?</a></p>
+    </article>
+    <nav class="site-foot" aria-label="Site"><a href="/how-to-play">How to play</a><a href="/topics">Topics</a><a href="/leaderboard">Leaderboard</a><a href="/hall-of-fame">Hall of Fame</a><a href="/guild-pass">Guild Pass</a><a href="/shop">Shop</a><a href="/faq">FAQ</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav>
   </section>
 
   <!-- LOBBY -->
@@ -296,7 +400,9 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
       <span class="pill"><span class="live-dot"></span><span id="onlineCount" class="mono">0 at tables</span></span>
       <span class="spacer"></span>
       <button class="btn small ghost" id="muteBtn" type="button" aria-pressed="false">Effects on</button>
-      <span class="pill" id="mePill"><span class="orb sm" id="meOrb"></span><span id="meName"></span></span>
+      <a class="btn small ghost" href="/leaderboard" target="_blank" rel="noopener">Leaderboard</a>
+      <button class="btn small" id="storeBtn" type="button">Store</button>
+      <button class="pill" id="mePill" type="button" title="Profile, locker and guild"><span class="orb sm" id="meOrb"></span><span id="meName"></span></button>
     </div>
     <div class="lobby-head">
       <h1>Pick a table.<br><span class="holo-text">Say something you'll regret.</span></h1>
@@ -321,6 +427,7 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
       <div id="findOut"></div>
     </div>
     <div class="tables" id="tables"></div>
+    <nav class="site-foot" aria-label="Site" style="margin-top:28px"><a href="/how-to-play">How to play</a><a href="/topics">Topics</a><a href="/leaderboard">Leaderboard</a><a href="/hall-of-fame">Hall of Fame</a><a href="/guild-pass">Guild Pass</a><a href="/faq">FAQ</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav>
   </section>
 
   <!-- TABLE -->
@@ -339,6 +446,7 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
       <div class="phase-row"><span class="phase" id="phase"></span><span class="clock" id="clock"></span></div>
       <div class="bar"><i id="barFill"></i></div>
       <div id="stageBody" style="display:flex;flex-direction:column;gap:20px"></div>
+      <div class="emojibar" id="emojiBar" aria-label="Send an emoji to the table"></div>
     </main>
     <aside class="rail">
       <div class="board glass"><h4 class="label">Scores</h4><div id="board"></div></div>
@@ -366,6 +474,8 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
 
 <script type="module">
 import { PACKS, checkAnswer } from './shared.js';
+import { GIFTS } from './catalog.js';
+import { ACCOUNT, loadMe, saveMe, openSheet, nameHTML, titleHTML, hashIntent, runIntent } from './meta.js';
 
 /* ======================= WebGL backdrop ======================= */
 const BG = (() => {
@@ -474,6 +584,8 @@ if(!ME.cid){ ME.cid = randId(); store.set('unsays.cid', ME.cid); }
 /* ======================= Screens ======================= */
 function show(id){ for (const s of ['intro','lobby','table']) $('#'+s).hidden = s!==id; window.scrollTo(0,0); }
 const hashTable = () => (location.hash.match(/^#t-([a-z0-9-]{1,40})$/)||[])[1];
+// Links like /#store come back from content pages and Stripe; act on them once the lobby is up.
+let INTENT = hashIntent(location.hash);
 
 // intro
 const introOrb=$('#introOrb'), nameInput=$('#nameInput');
@@ -488,7 +600,7 @@ $('#introForm').addEventListener('submit', e=>{
   if(!n){ nameInput.focus(); nameInput.placeholder='Type a name first'; SFX.err(); return; }
   ME.name=n.slice(0,18); store.set('unsays.name',ME.name); store.set('unsays.hue',ME.hue);
   SFX.start(); BG.warp=1; MUSIC.start();
-  const t = hashTable(); if (t) joinTable(t); else enterLobby();
+  saveMe(ME.name, ME.hue).finally(()=>{ const t = hashTable(); if (t) joinTable(t); else enterLobby(); });
 });
 
 /* ======================= Lobby ======================= */
@@ -507,8 +619,8 @@ function renderTables(){
   $('#onlineCount').textContent = playing ? `${playing} playing now` : 'Be the first at a table';
   $('#tables').innerHTML = list.length ? list.map(t=>`
     <article class="tcard glass ${t.special?'special':''}" data-id="${t.id}">
-      <div class="badges">${badgesHTML(t)}<span class="badge">To ${t.target}</span></div>
-      <h3>${esc(t.name)}</h3>
+      <div class="badges">${t.guild?`<span class="badge adult">Guild · members</span>`:''}${badgesHTML(t)}<span class="badge">To ${t.target}</span></div>
+      <h3>${t.guild?`<span class="gtag">[${esc(t.guild.tag)}]</span>`:''}${esc(t.name)}</h3>
       <div class="ticker"><span class="acro" data-acro>${esc(t.acro || '· · ·')}</span><span class="st">${t.round?`R${t.round} · `:''}${esc(t.phase)}</span></div>
       <div class="tfoot">
         <span style="display:flex;align-items:center"><span class="seats">${t.humans} ${t.humans===1?'person':'people'}${t.bots?` + ${t.bots} bot${t.bots>1?'s':''}`:''}</span></span>
@@ -535,14 +647,25 @@ function enterLobby(){
   leaveTable();
   if (location.hash) history.replaceState(null, '', location.pathname);
   show('lobby'); inLobby = true;
-  $('#meName').textContent=ME.name; $('#meOrb').style.setProperty('--h',ME.hue);
+  paintMe();
   BG.target=.1; renderTables();
   if (!lobbyWS || lobbyWS.readyState > 1) connectLobby();
+  if (INTENT) { const i = INTENT; INTENT = null; runIntent(i); }
 }
+function paintMe(){
+  const me = ACCOUNT.me;
+  $('#meName').innerHTML = nameHTML({ name: ME.name, tag: me && me.guild && me.guild.active ? me.guild.tag : null, style: me && me.equip.name });
+  $('#meOrb').style.setProperty('--h',ME.hue);
+}
+$('#mePill').addEventListener('click', ()=>openSheet('profile'));
+$('#storeBtn').addEventListener('click', ()=>openSheet('store'));
+window.addEventListener('unsays:me', ()=>{ paintMe(); sendT({t:'refresh'}); });
 function leaveLobby(){ inLobby = false; if (lobbyWS) { lobbyWS.onclose = null; lobbyWS.close(); lobbyWS = null; } }
 
 $('#quickJoin').addEventListener('click',()=>{
-  const l = visibleTables().length ? visibleTables() : TABLES;
+  // Guild tables are members-only, so quick join skips the ones you can't sit at.
+  const mine = t => !t.guild || (ACCOUNT.me && ACCOUNT.me.guild && ACCOUNT.me.guild.id === t.guild.id);
+  const l = (visibleTables().length ? visibleTables() : TABLES).filter(mine);
   if (!l.length) return toast('Tables are still loading.');
   const t = l.slice().sort((a,b)=>(b.humans-a.humans)||((b.humans+b.bots)-(a.humans+a.bots)))[0];
   joinTable(t.id);
@@ -593,6 +716,7 @@ function connectTable(){
     if (!T || T.ws !== ws) return;
     if (e.code === 4404) { toast('That table has closed.'); return enterLobby(); }
     if (e.code === 4409) { toast('That table is full.'); return enterLobby(); }
+    if (e.code === 4403) { toast('That table is for guild members only.'); return enterLobby(); }
     if (e.code === 4000) { setConn(false, 'Playing in another tab'); return; }
     if (e.code === 4408) { toast(T.kickMsg || 'You were sent back to the lobby for being inactive.'); return enterLobby(); }
     setConn(false);
@@ -621,13 +745,16 @@ function onTableMsg(m){
   else if (m.t === 'answer') onAnswer(m);
   else if (m.t === 'error') toast(m.msg);
   else if (m.t === 'kicked') T.kickMsg = m.msg;
+  else if (m.t === 'emoji') showEmoji(m);
+  else if (m.t === 'giftFx') showGift(m);
+  else if (m.t === 'gift') { if (!m.ok) { toast(m.msg); SFX.err(); } else { SFX.ok(); if (ACCOUNT.me) ACCOUNT.me.gifts = m.left; } }
 }
 
 function addChat(c){
   const log=$('#log'); const d=document.createElement('div'); d.className='m';
   if(c.kind==='sys') d.innerHTML=`<span class="sys">${esc(c.text)}</span>`;
   else if(c.kind==='me') d.innerHTML=`<span class="me-act">* ${esc(c.name)} ${esc(c.text)}</span>`;
-  else d.innerHTML=`<b style="color:hsl(${c.hue} 90% 72%)">${esc(c.name)}</b> <span>${esc(c.text)}</span>`;
+  else d.innerHTML=`<b style="color:hsl(${c.hue} 90% 72%)">${nameHTML(c)}</b> <span>${esc(c.text)}</span>`;
   log.appendChild(d); while(log.children.length>80) log.firstChild.remove(); log.scrollTop=log.scrollHeight;
 }
 $('#chatForm').addEventListener('submit', e=>{ e.preventDefault(); const inp=$('#chatInput'); const v=inp.value.trim(); if(!v) return; inp.value=''; sendT({t:'chat', text:v}); });
@@ -646,6 +773,7 @@ function render(S){
     renderStage(S, prev);
   } else updateStage(S);
   renderBoard(S, changed && S.phase==='results');
+  renderEmojiBar(S);
   runClock();
 }
 
@@ -673,7 +801,7 @@ function topicHTML(t){
 }
 function vsHTML(S){
   const a=player(S.fo.a), b=player(S.fo.b), v=S.fo.votes;
-  return `<div class="vs"><div class="side">${orbHTML(a.hue)}<b>${isMe(a.id)?'You':esc(a.name)}</b><span class="score">${v[a.id]}</span></div><span class="vsx holo-text">VS</span><div class="side"><span class="score">${v[b.id]}</span><b>${isMe(b.id)?'You':esc(b.name)}</b>${orbHTML(b.hue)}</div></div>`;
+  return `<div class="vs"><div class="side">${orbHTML(a.hue)}<b>${isMe(a.id)?'You':nameHTML(a)}</b><span class="score">${v[a.id]}</span></div><span class="vsx holo-text">VS</span><div class="side"><span class="score">${v[b.id]}</span><b>${isMe(b.id)?'You':nameHTML(b)}</b>${orbHTML(b.hue)}</div></div>`;
 }
 const smallTiles = acro => `<div class="tiles">${acro.split('').map(L=>`<span class="tile" style="animation:none;width:clamp(34px,6vw,46px);font-size:clamp(17px,3vw,24px);border-radius:10px">${L}</span>`).join('')}</div>`;
 
@@ -760,9 +888,13 @@ function renderStage(S, prev){
     const ban = w ? `<div class="banner">${orbHTML(w.hue)}<span class="big">${isMe(w.id)?'You win the round':esc(w.name)+' wins the round'}</span><span class="tag gold">+${S.acro.length} win bonus</span></div>` : `<div class="banner"><span class="big">No votes this round.</span></div>`;
     const warn = r.missedVote ? `<div class="banner warn">You didn't vote, so you scored nothing this round${r.forfeit?' (your points were forfeited)':''}.</div>`:'';
     body.innerHTML = `${ban}${warn}<div class="entries">${r.entries.map((e,i)=>{ const p=player(e.pid);
-      return `<div class="entry ${e.pid===r.winner?'win':''}" style="animation-delay:${i*70}ms"><span>${esc(e.text)}</span>
-        <span class="who">${orbHTML(p.hue,'sm')}<b>${isMe(p.id)?'You':esc(p.name)}</b><span class="pts">${e.why.map(([c,s])=>`<span class="tag ${c}">${s}</span>`).join('')||'<span class="tag dim">0</span>'}</span></span></div>`; }).join('')}</div>`;
-    if (r.winner && isMe(r.winner)) { SFX.win(); confetti(); } else SFX.vote();
+      return `<div class="entry ${e.pid===r.winner?'win':''} ${e.fx?'rv-'+esc(e.fx):''}" data-entry="${e.id}" style="animation-delay:${i*70}ms"><span>${esc(e.text)}</span>
+        <span class="who">${orbHTML(p.hue,'sm')}<b>${isMe(p.id)?'You':nameHTML(p)}</b><span class="pts">${e.why.map(([c,s])=>`<span class="tag ${c}">${s}</span>`).join('')||'<span class="tag dim">0</span>'}</span></span>
+        ${lineActs(S, e, p)}</div>`; }).join('')}</div>`;
+    wireLineActs(body);
+    if (r.winFx) winFx(r.winFx);
+    else if (r.winner && isMe(r.winner)) confetti();
+    if (r.winner && isMe(r.winner)) SFX.win(); else SFX.vote();
     const g = r.gain[T.you]; if (g>0) setTimeout(()=>floatAt(document.querySelector('.prow.me .sc'), `+${g}`), 300);
     return;
   }
@@ -783,14 +915,15 @@ function renderStage(S, prev){
   if (ph==='foResults') {
     const r=S.results, top=Math.max(...Object.values(r.tally));
     body.innerHTML = `${vsHTML(S)}<div class="entries">${r.entries.map(e=>{ const p=player(e.pid); const won=r.tally[e.pid]===top && top>0;
-      return `<div class="entry ${won?'win':''}"><span>${esc(e.text)}</span><span class="who">${orbHTML(p.hue,'sm')}<b>${isMe(p.id)?'You':esc(p.name)}</b><span class="pts"><span class="tag gold">${r.tally[e.pid]} vote${r.tally[e.pid]===1?'':'s'}</span></span></span></div>`; }).join('')}</div>`;
+      return `<div class="entry ${won?'win':''}" data-entry="${e.id}"><span>${esc(e.text)}</span><span class="who">${orbHTML(p.hue,'sm')}<b>${isMe(p.id)?'You':nameHTML(p)}</b><span class="pts"><span class="tag gold">${r.tally[e.pid]} vote${r.tally[e.pid]===1?'':'s'}</span></span></span>${lineActs(S, e, p)}</div>`; }).join('')}</div>`;
+    wireLineActs(body);
     SFX.vote();
     return;
   }
   if (ph==='over') {
     BG.target=.8; BG.warp=1;
     const c=player(S.champ);
-    body.innerHTML = `<div class="champ">${orbHTML(c.hue,'lg')}<span class="label">Champion</span><div class="wordmark holo-text">${isMe(c.id)?'You won.':esc(c.name)}</div>
+    body.innerHTML = `<div class="champ">${orbHTML(c.hue,'lg')}<span class="label">Champion</span><div class="wordmark holo-text">${isMe(c.id)?'You won.':esc(c.name)}</div>${c.tag||c.title?`<div class="muted">${c.tag?`<span class="gtag">[${esc(c.tag)}]</span>`:''}${c.title?esc(c.title):''}</div>`:''}
       <div class="muted">${S.fo.votes[S.fo.a]}–${S.fo.votes[S.fo.b]} in the face-off. A new game starts when the clock runs out.</div>
       <div class="actions"><button class="btn prime" type="button" id="againBtn">Start next game now</button><button class="btn" type="button" id="lobbyBtn2">Back to lobby</button></div></div>`;
     $('#againBtn').onclick=()=>sendT({t:'again'});
@@ -808,6 +941,10 @@ function updateStage(S){
   if (S.phase==='waiting' && $('#seated')) $('#seated').innerHTML = seatedHTML(S);
   if (S.phase==='waiting' && $('#roomCount')) { const n=S.players.filter(p=>!p.bot).length; const t=$('#roomCount').textContent; $('#roomCount').textContent = `${n} ${n===1?'person':'people'} here.` + t.slice(t.indexOf('.')+1); }
   if ((S.phase==='compose'||S.phase==='foCompose') && $('#countLbl')) $('#countLbl').textContent = `${S.compose.count} of ${S.compose.need} answers in`;
+  if ((S.phase==='results'||S.phase==='foResults') && S.results) for (const e of S.results.entries) {
+    const el = document.querySelector(`[data-gifted="${e.id}"]`);
+    if (el) { el.hidden = !e.gifts; el.textContent = `👑 ${e.gifts}`; }
+  }
 }
 function paintTiles(text, acro){
   const c = checkAnswer(text, acro);
@@ -826,9 +963,72 @@ function onAnswer(m){
 function renderBoard(S, bump){
   const rows = S.players.slice().sort((a,b)=>b.score-a.score).map(p=>{
     const on = p.status==='in'||p.status==='voted'||p.status.startsWith('+');
-    return `<div class="prow ${isMe(p.id)?'me':''} ${bump&&p.status.startsWith('+')?'bump':''} ${p.connected?'':'away'}">${orbHTML(p.hue,'sm')}<span class="nm">${isMe(p.id)?esc(p.name)+' (you)':esc(p.name)}${p.bot?' <span class="botmark">bot</span>':''}</span><span class="stt ${on?'on':''}">${p.connected?esc(p.status):'away'}</span><span class="sc">${p.score}</span></div>`;
+    return `<div class="prow ${isMe(p.id)?'me':''} ${bump&&p.status.startsWith('+')?'bump':''} ${p.connected?'':'away'}">${orbHTML(p.hue,'sm')}<span class="nm">${nameHTML(p, isMe(p.id)?esc(p.name)+' (you)':undefined)}${p.bot?' <span class="botmark">bot</span>':''}${titleHTML(p)}</span><span class="stt ${on?'on':''}">${p.connected?esc(p.status):'away'}</span><span class="sc">${p.score}</span></div>`;
   }).join('');
   $('#board').innerHTML = rows;
+}
+
+/* ======================= Emoji, gifts and flair effects ======================= */
+// Gifts and line emoji only appear once votes are revealed, so they can't steer a vote.
+function lineActs(S, e, p){
+  const gifted = `<span class="gifted" data-gifted="${e.id}" ${e.gifts?'':'hidden'}>👑 ${e.gifts||0}</span>`;
+  if (isMe(p.id)) return `<div class="acts">${gifted}</div>`;
+  const quick = (S.me ? S.me.emoji : []).slice(0, 4).map(x=>`<button class="mini" type="button" data-lemo="${x}" data-for="${e.id}" aria-label="React ${x}">${x}</button>`).join('');
+  const gifts = p.acct && !p.bot ? `<button class="mini" type="button" data-gift="gift" data-for="${e.id}" title="Send a gift (1)">${GIFTS.gift.icon} Gift</button><button class="mini" type="button" data-gift="crown" data-for="${e.id}" title="Send a gold crown (${GIFTS.crown.cost} gifts)">${GIFTS.crown.icon}</button>` : '';
+  return `<div class="acts">${gifted}${quick}${gifts}</div>`;
+}
+function wireLineActs(root){
+  root.querySelectorAll('[data-lemo]').forEach(b=>b.addEventListener('click',()=>sendEmoji(b.dataset.lemo, b.dataset.for)));
+  root.querySelectorAll('[data-gift]').forEach(b=>b.addEventListener('click',()=>{
+    const cost = GIFTS[b.dataset.gift].cost;
+    if ((T.S.me.gifts||0) < cost) { toast(`You need ${cost} gift${cost>1?'s':''}. Grab a gift pack in the store.`); openSheet('store'); return; }
+    sendT({t:'gift', entry:b.dataset.for, kind:b.dataset.gift});
+  }));
+}
+let lastEmoji = 0;
+function sendEmoji(e, entry){
+  if (Date.now() - lastEmoji < 2000) return;
+  lastEmoji = Date.now(); sendT({ t:'emoji', e, entry: entry || null });
+}
+function renderEmojiBar(S){
+  const bar = $('#emojiBar'); if (!bar) return;
+  const list = (S.me && S.me.emoji) || [];
+  const key = list.join('');
+  if (bar.dataset.key === key) return;
+  bar.dataset.key = key;
+  bar.innerHTML = list.map(e=>`<button type="button" data-emo="${e}" aria-label="Send ${e}">${e}</button>`).join('') + `<button class="more" type="button" id="moreEmoji">More emoji</button>`;
+  bar.querySelectorAll('[data-emo]').forEach(b=>b.addEventListener('click',()=>sendEmoji(b.dataset.emo)));
+  $('#moreEmoji').addEventListener('click',()=>openSheet('store'));
+}
+function showEmoji(m){
+  const from = T && T.S ? player(m.from) : null;
+  const target = m.entry && document.querySelector(`[data-entry="${m.entry}"]`);
+  const r = (target || $('#stage')).getBoundingClientRect();
+  const el = document.createElement('div'); el.className = 'emo' + (m.big ? ' big' : '');
+  el.innerHTML = `${m.e}${from && !target ? `<small>${esc(isMe(from.id)?'you':from.name)}</small>` : ''}`;
+  const x = target ? r.right - 70 - Math.random()*40 : r.left + 30 + Math.random()*(r.width-90);
+  el.style.left = x + 'px'; el.style.top = (target ? r.top : r.bottom - 120) + 'px';
+  document.body.appendChild(el); setTimeout(()=>el.remove(), 2600);
+}
+function showGift(m){
+  const target = document.querySelector(`[data-entry="${m.entry}"]`);
+  showEmoji({ e:m.icon, from:m.from, entry:m.entry, big:m.kind==='crown' });
+  if (target) target.animate([{boxShadow:'0 0 0 0 rgba(255,211,107,0)'},{boxShadow:'0 0 40px 6px rgba(255,211,107,.6)'},{boxShadow:'0 0 0 0 rgba(255,211,107,0)'}],{duration:1200});
+  if (isMe(m.to)) { SFX.win(); toast(`Someone sent ${m.icon} to your line.`); }
+}
+// Win animations from flair packs. Everyone at the table sees them.
+function winFx(kind){
+  if (kind==='supernova') { BG.target=1; BG.warp=2; confetti(true); setTimeout(()=>confetti(true), 350); }
+  else if (kind==='storm') { confetti(true); setTimeout(()=>confetti(true), 300); setTimeout(()=>confetti(true), 600); }
+  else if (kind==='warp') { BG.warp=3; BG.target=1; confetti(); }
+  else if (kind==='snowfall') snow();
+  else confetti();
+}
+function snow(){
+  const cv=$('#fx'), ctx=cv.getContext('2d'); cv.width=innerWidth; cv.height=innerHeight;
+  const ps=Array.from({length:160},()=>({x:Math.random()*innerWidth,y:-Math.random()*innerHeight,r:1.5+Math.random()*3,v:1+Math.random()*2.5,d:Math.random()*6}));
+  let f=0;
+  (function step(){ ctx.clearRect(0,0,cv.width,cv.height); ctx.fillStyle='rgba(255,255,255,.9)'; for(const p of ps){ p.y+=p.v; p.x+=Math.sin((f+p.d*30)/30)*.8; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); } if(++f<240) requestAnimationFrame(step); else ctx.clearRect(0,0,cv.width,cv.height); })();
 }
 
 /* ======================= Confetti ======================= */
@@ -858,6 +1058,10 @@ const MUSIC = (() => {
 
 /* boot */
 setMuteLabels();
+loadMe().then(me=>{
+  // Coming back from Stripe or another page with a saved name: skip straight to the lobby.
+  if (INTENT && ME.name && !hashTable()) enterLobby();
+});
 </script>
 </body>
 </html>
