@@ -190,10 +190,10 @@ export class Table extends DurableObject {
   }
   // Everyone is done: end the phase after a short grace instead of waiting out the clock.
   cutShort() {
-    if (this.endsAt - Date.now() > 2200) {
+    if (this.endsAt - Date.now() > 1400) {
       clearTimeout(this.endTimer); this.timers.delete(this.endTimer);
-      this.endsAt = Date.now() + 2000;
-      this.endTimer = this.later(2, this.onEnd);
+      this.endsAt = Date.now() + 1200;
+      this.endTimer = this.later(1.2, this.onEnd);
       this.broadcast();
     }
   }
@@ -241,22 +241,33 @@ export class Table extends DurableObject {
     this.acro = makeAcronym(3 + ((this.round - 1) % 5));
     this.entries = []; this.votes = {}; this.order = null; this.res = null;
     this.setPhase('compose', this.T.compose, () => this.startVote());
-    const topicId = this.topic.id === 'general' ? null : this.topic.id;
-    for (const b of this.bots()) {
-      this.later(this.T.compose * rnd(b.speed * .45, Math.min(.95, b.speed + .2)), () => {
-        if (this.phase !== 'compose' || !this.players.has(b.id)) return;
-        let ph, tries = 0;
-        do { ph = botPhrase(this.acro, topicId); tries++; } while (this.entries.some(e => normal(e.text) === normal(ph.text)) && tries < 10);
-        this.entries.push({ id: uid(), pid: b.id, text: ph.text, q: ph.q * b.wit, at: Date.now() });
-        this.afterEntry();
-      });
-    }
+    for (const b of this.bots()) this.later(this.T.compose * rnd(b.speed * .45, Math.min(.95, b.speed + .2)), () => this.botEntry(b));
     this.botChat('compose', .5);
   }
 
+  botEntry(b) {
+    const ph0 = this.phase;
+    if ((ph0 !== 'compose' && ph0 !== 'foCompose') || !this.players.has(b.id) || this.entries.some(e => e.pid === b.id)) return;
+    const topicId = this.topic.id === 'general' ? null : this.topic.id;
+    let ph, tries = 0;
+    do { ph = botPhrase(this.acro, topicId); tries++; } while (this.entries.some(e => normal(e.text) === normal(ph.text)) && tries < 10);
+    this.entries.push({ id: uid(), pid: b.id, text: ph.text, q: ph.q * b.wit, at: Date.now() });
+    this.afterEntry();
+  }
+
+  writers() {
+    return this.phase === 'foCompose' ? [this.fo.a, this.fo.b].map(id => this.byId(id)).filter(p => p.bot || p.connected) : this.active();
+  }
+  // Once every person has answered, bots answer straight away so nobody waits on them.
   afterEntry() {
-    const need = this.phase === 'foCompose' ? [this.fo.a, this.fo.b].filter(id => this.byId(id).bot || this.byId(id).connected).length : this.active().length;
-    if (this.entries.length >= need) this.cutShort(); else this.broadcast();
+    const writers = this.writers();
+    const done = id => this.entries.some(e => e.pid === id);
+    if (writers.every(p => done(p.id))) return this.cutShort();
+    if (writers.filter(p => !p.bot).every(p => done(p.id))) {
+      for (const b of writers.filter(p => p.bot && !done(p.id))) this.botEntry(b);
+      return;
+    }
+    this.broadcast();
   }
 
   answer(p, text) {
@@ -284,13 +295,7 @@ export class Table extends DurableObject {
     }
     this.order = shuffle(this.entries);
     this.setPhase('vote', this.T.vote, () => this.results());
-    for (const b of this.bots()) {
-      this.later(this.T.vote * rnd(.15, .8), () => {
-        if (this.phase !== 'vote' || !this.players.has(b.id)) return;
-        this.votes[b.id] = this.weightedPick(this.entries.filter(e => e.pid !== b.id)).id;
-        this.afterVote();
-      });
-    }
+    for (const b of this.bots()) this.later(this.T.vote * rnd(.15, .8), () => this.botVote(b));
     this.botChat('vote', .4);
   }
 
@@ -305,8 +310,22 @@ export class Table extends DurableObject {
     if (this.phase === 'foVote') return this.active().filter(p => p.id !== this.fo.a && p.id !== this.fo.b);
     return this.active();
   }
+  botVote(b) {
+    const fo = this.phase === 'foVote';
+    if ((this.phase !== 'vote' && !fo) || !this.players.has(b.id) || this.votes[b.id]) return;
+    if (fo && (b.id === this.fo.a || b.id === this.fo.b)) return;
+    this.votes[b.id] = this.weightedPick(fo ? this.entries : this.entries.filter(e => e.pid !== b.id)).id;
+    this.afterVote();
+  }
+  // Same for votes: when every person has voted, the bots vote now and the round moves on.
   afterVote() {
-    if (this.voters().every(v => this.votes[v.id])) this.cutShort(); else this.broadcast();
+    const voters = this.voters();
+    if (voters.every(v => this.votes[v.id])) return this.cutShort();
+    if (voters.filter(v => !v.bot).every(v => this.votes[v.id])) {
+      for (const b of voters.filter(v => v.bot && !this.votes[v.id])) this.botVote(b);
+      return;
+    }
+    this.broadcast();
   }
 
   vote(p, entryId) {
@@ -409,12 +428,7 @@ export class Table extends DurableObject {
     this.setPhase('foCompose', this.T.foCompose, () => this.foVote());
     for (const id of [this.fo.a, this.fo.b]) {
       const f = this.players.get(id);
-      if (f && f.bot) this.later(this.T.foCompose * rnd(.3, .85), () => {
-        if (this.phase !== 'foCompose') return;
-        const ph = botPhrase(this.acro, null);
-        this.entries.push({ id: uid(), pid: f.id, text: ph.text, q: ph.q * f.wit, at: Date.now() });
-        this.afterEntry();
-      });
+      if (f && f.bot) this.later(this.T.foCompose * rnd(.3, .85), () => this.botEntry(f));
     }
   }
 
@@ -426,11 +440,7 @@ export class Table extends DurableObject {
     this.setPhase('foVote', this.T.foVote, () => this.foResults());
     for (const b of this.bots()) {
       if (b.id === this.fo.a || b.id === this.fo.b) continue;
-      this.later(this.T.foVote * rnd(.15, .75), () => {
-        if (this.phase !== 'foVote' || !this.players.has(b.id)) return;
-        this.votes[b.id] = this.weightedPick(this.entries).id;
-        this.afterVote();
-      });
+      this.later(this.T.foVote * rnd(.15, .75), () => this.botVote(b));
     }
   }
 
