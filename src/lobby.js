@@ -91,7 +91,8 @@ export class Lobby extends DurableObject {
       const target = body.target === 15 || body.target === '15' ? 15 : 30;
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'table';
       const id = `${slug}-${crypto.randomUUID().slice(0, 6)}`;
-      const t = { id, name, pack, speed, mode, target, special: pack !== 'all', custom: true, createdAt: Date.now(),
+      const host = /^[a-z0-9-]{8,40}$/i.test(String(body.cid || '')) ? String(body.cid) : null;
+      const t = { id, name, pack, speed, mode, target, special: pack !== 'all', custom: true, host, createdAt: Date.now(),
         live: { humans: 0, bots: 0, names: [], round: 0, acro: '', phase: 'waiting', emptySince: Date.now() } };
       this.tables.set(id, t);
       await this.save(); this.push();

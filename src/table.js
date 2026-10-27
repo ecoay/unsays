@@ -25,6 +25,7 @@ export class Table extends DurableObject {
     this.chatLog = [];
     this.phase = 'idle';
     this.reportTimer = null;
+    this.useBots = true;
   }
 
   /* ---------- connections ---------- */
@@ -66,6 +67,8 @@ export class Table extends DurableObject {
       case 'pick': return this.choose(p, String(m.topic || ''));
       case 'chat': return this.userChat(p, String(m.text || '').slice(0, 140));
       case 'again': if (this.phase === 'over') this.newGame(); return;
+      case 'start': return this.startFromRoom(p, m.bots !== false);
+      case 'bots': if (this.phase === 'waiting' && p.id === this.hostId()) { this.useBots = m.bots !== false; this.broadcast(); } return;
     }
   }
 
@@ -89,7 +92,11 @@ export class Table extends DurableObject {
     }
     ws.pid = cid;
     this.send(ws, { t: 'welcome', you: cid, config: this.publicConfig(), chat: this.chatLog });
-    if (this.phase === 'idle') this.newGame();
+    if (this.phase === 'idle') {
+      // Tables people create open as a waiting room so the host can invite friends first.
+      if (this.config.custom) { this.phase = 'waiting'; this.useBots = true; this.broadcast(); }
+      else this.newGame();
+    } else if (this.phase === 'waiting') this.broadcast();
     else { this.maintainBots(false); this.broadcast(); }
     this.report();
   }
@@ -150,7 +157,8 @@ export class Table extends DurableObject {
   }
   // Bots keep the table playable: they fill empty seats and leave as people arrive.
   maintainBots(allowRemove = true) {
-    const want = Math.max(0, MIN_SEATS - this.humans().length);
+    // Without bots a game still needs 2 people, so a lone player always gets bots.
+    const want = this.useBots || this.humans().length < 2 ? Math.max(0, MIN_SEATS - this.humans().length) : 0;
     let bots = this.bots();
     while (bots.length < want) { const b = this.newBot(); this.players.set(b.id, b); bots.push(b); }
     if (allowRemove && bots.length > want) {
@@ -162,7 +170,7 @@ export class Table extends DurableObject {
     if (this.reportTimer) return;
     this.reportTimer = setTimeout(async () => {
       this.reportTimer = null;
-      const phaseName = { compose: 'writing', vote: 'voting', results: 'results', pick: 'picking', foCompose: 'face-off', foVote: 'face-off', foResults: 'face-off', over: 'game over' }[this.phase] || 'waiting';
+      const phaseName = { compose: 'writing', vote: 'voting', results: 'results', pick: 'picking', foCompose: 'face-off', foVote: 'face-off', foResults: 'face-off', over: 'game over', waiting: 'waiting room' }[this.phase] || 'waiting';
       try {
         await this.lobby().fetch(`https://lobby/api/tables/${this.config.id}/live`, {
           method: 'POST',
@@ -191,6 +199,20 @@ export class Table extends DurableObject {
   }
 
   /* ---------- game flow ---------- */
+
+  // The creator hosts; if they're gone, the longest-seated connected player takes over.
+  hostId() {
+    const c = this.connected();
+    const host = c.find(p => p.id === this.config.host);
+    return (host || c[0] || {}).id || null;
+  }
+
+  startFromRoom(p, bots) {
+    if (this.phase !== 'waiting' || p.id !== this.hostId()) return;
+    this.useBots = bots;
+    this.sys(`${p.name} started the game.`);
+    this.newGame();
+  }
 
   newGame() {
     this.clearTimers();
@@ -472,6 +494,7 @@ export class Table extends DurableObject {
     if (ph === 'foResults') v.results = { tally: this.res.tally, entries: this.res.entries.map(e => ({ ...e, text: clean(e.text, mode) })) };
     if (ph === 'pick') v.pick = { picker: this.picker, opts: this.opts.map(publicTopic), chosen: this.chosen ? this.chosen.id : null };
     if (ph === 'over') v.champ = this.champ;
+    if (ph === 'waiting') v.waiting = { host: this.hostId(), useBots: this.useBots };
     return v;
   }
 
