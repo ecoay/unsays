@@ -39,7 +39,7 @@ html,body{height:100%}
 body{background:var(--void);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;overflow-x:hidden;-webkit-font-smoothing:antialiased}
 #bg{position:fixed;inset:0;width:100%;height:100%;z-index:0;display:block;background:radial-gradient(120% 80% at 70% 10%,#2a1260 0%,transparent 60%),radial-gradient(90% 70% at 10% 90%,#073a4a 0%,transparent 60%),var(--void)}
 .grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.07;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-.app{position:relative;z-index:2;min-height:100%;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px}
+.app{position:relative;z-index:2;min-height:100%;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px calc(76px + env(safe-area-inset-bottom,0px))}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
@@ -217,6 +217,14 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
 .chat .field{padding:9px 12px;font-size:14px}
 .targetbar{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-dim);font-family:var(--f-mono)}
 #fx{position:fixed;inset:0;pointer-events:none;z-index:60}
+.music{position:fixed;z-index:65;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));width:48px;height:48px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line-hi);background:var(--glass-hi);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:var(--ink);transition:transform .15s,border-color .2s,box-shadow .2s}
+.music:hover{border-color:var(--cyan);transform:scale(1.06)}
+.music[aria-pressed="true"]{box-shadow:0 0 22px rgba(143,107,255,.5);border-color:var(--violet)}
+.music svg{width:22px;height:22px}
+.music .waves{transition:opacity .2s}
+.music[aria-pressed="false"] .waves{opacity:0}
+.music .x{opacity:0;transition:opacity .2s}
+.music[aria-pressed="false"] .x{opacity:1}
 .float{position:fixed;z-index:61;pointer-events:none;font-family:var(--f-display);font-weight:800;font-size:22px;color:var(--gold);text-shadow:0 0 18px rgba(255,211,107,.6);animation:floatup 1.4s ease-out forwards}
 @keyframes floatup{to{transform:translateY(-70px);opacity:0}}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:70;padding:10px 16px;border-radius:999px;background:var(--glass-hi);border:1px solid var(--line-hi);backdrop-filter:blur(14px);font-size:14px;animation:rise .25s both}
@@ -246,6 +254,14 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
 <canvas id="bg" aria-hidden="true"></canvas>
 <div class="grain" aria-hidden="true"></div>
 <canvas id="fx" aria-hidden="true"></canvas>
+<button class="music" id="musicBtn" type="button" aria-pressed="false" aria-label="Background music" title="Background music">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M11 5 6 9H3v6h3l5 4z" fill="currentColor"/>
+    <g class="waves"><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></g>
+    <g class="x"><path d="m16 9 6 6"/><path d="m22 9-6 6"/></g>
+  </svg>
+</button>
+<audio id="bgm" src="audio/level-up.mp3" loop preload="none"></audio>
 
 <div class="app">
   <!-- INTRO -->
@@ -273,7 +289,7 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
       <div class="wordmark">unsays<span class="dot">.</span></div>
       <span class="pill"><span class="live-dot"></span><span id="onlineCount" class="mono">0 at tables</span></span>
       <span class="spacer"></span>
-      <button class="btn small ghost" id="muteBtn" type="button" aria-pressed="false">Sound on</button>
+      <button class="btn small ghost" id="muteBtn" type="button" aria-pressed="false">Effects on</button>
       <span class="pill" id="mePill"><span class="orb sm" id="meOrb"></span><span id="meName"></span></span>
     </div>
     <div class="lobby-head">
@@ -311,7 +327,7 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
       <span class="pill" id="conn" hidden>Reconnecting…</span>
       <button class="btn small" id="inviteBtn" type="button">Copy invite link</button>
       <span class="targetbar"><span id="tRound"></span> · first to <span id="tTarget"></span></span>
-      <button class="btn small ghost" id="muteBtn2" type="button">Sound on</button>
+      <button class="btn small ghost" id="muteBtn2" type="button">Effects on</button>
     </div>
     <main class="stage glass" id="stage">
       <div class="phase-row"><span class="phase" id="phase"></span><span class="clock" id="clock"></span></div>
@@ -465,7 +481,7 @@ $('#introForm').addEventListener('submit', e=>{
   const n = nameInput.value.trim().replace(/\s+/g,' ');
   if(!n){ nameInput.focus(); nameInput.placeholder='Type a name first'; SFX.err(); return; }
   ME.name=n.slice(0,18); store.set('unsays.name',ME.name); store.set('unsays.hue',ME.hue);
-  SFX.start(); BG.warp=1;
+  SFX.start(); BG.warp=1; MUSIC.start();
   const t = hashTable(); if (t) joinTable(t); else enterLobby();
 });
 
@@ -544,7 +560,7 @@ $('#findForm').addEventListener('submit',e=>{
   for(const t of TABLES){ const n=(t.names||[]).find(n=>n.toLowerCase().includes(q)); if(n){ out.innerHTML=`<b>${esc(n)}</b> is at ${esc(t.name)}. <button class="btn small" type="button" id="goFriend">Go to table</button>`; $('#goFriend').onclick=()=>joinTable(t.id); return; } }
   out.textContent=`Nobody named "${raw}" is at a table right now.`;
 });
-function setMuteLabels(){ for(const id of ['#muteBtn','#muteBtn2']){ const b=$(id); b.textContent=SFX.on?'Sound on':'Sound off'; b.setAttribute('aria-pressed', String(!SFX.on)); } }
+function setMuteLabels(){ for(const id of ['#muteBtn','#muteBtn2']){ const b=$(id); b.textContent=SFX.on?'Effects on':'Effects off'; b.setAttribute('aria-pressed', String(!SFX.on)); } }
 $('#muteBtn').addEventListener('click',()=>{SFX.toggle();setMuteLabels();});
 $('#muteBtn2').addEventListener('click',()=>{SFX.toggle();setMuteLabels();});
 
@@ -788,6 +804,21 @@ function confetti(big){
   let f=0;
   (function step(){ ctx.clearRect(0,0,cv.width,cv.height); for(const p of ps){ p.vy+=.35; p.x+=p.vx; p.y+=p.vy; p.vx*=.99; p.a+=p.va; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a); ctx.fillStyle=p.c; ctx.fillRect(-p.r,-p.r/2,p.r*2,p.r); ctx.restore(); } if(++f<150) requestAnimationFrame(step); else ctx.clearRect(0,0,cv.width,cv.height); })();
 }
+
+/* ======================= Background music ======================= */
+const MUSIC = (() => {
+  const el = $('#bgm'), btn = $('#musicBtn');
+  el.volume = .35;
+  let on = store.get('unsays.music', true);
+  const paint = () => { btn.setAttribute('aria-pressed', String(on)); btn.title = on ? 'Mute music' : 'Play music'; btn.setAttribute('aria-label', btn.title); };
+  // Browsers only allow playback after a click, so the first start happens from one.
+  const play = () => { if (on) el.play().catch(()=>{}); };
+  btn.addEventListener('click', () => { on = !on; store.set('unsays.music', on); paint(); if (on) el.play().catch(()=>{}); else el.pause(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) el.pause(); else if (on && started) play(); });
+  let started = false;
+  paint();
+  return { start(){ started = true; play(); } };
+})();
 
 /* boot */
 setMuteLabels();
