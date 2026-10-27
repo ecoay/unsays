@@ -418,7 +418,7 @@ export class Table extends DurableObject {
     const lastAt = id => this.entries.find(e => e.pid === id)?.at ?? Infinity;
     const ranked = [...this.players.values()].sort((a, b) => (b.score - a.score) || (lastAt(a.id) - lastAt(b.id)));
     const [a, b] = ranked;
-    this.fo = { a: a.id, b: b.id, r: 0, lens: [3, 4, 5], votes: { [a.id]: 0, [b.id]: 0 }, speed: { [a.id]: 0, [b.id]: 0 } };
+    this.fo = { a: a.id, b: b.id, r: 0, lens: [3, 4, 4], votes: { [a.id]: 0, [b.id]: 0 }, speed: { [a.id]: 0, [b.id]: 0 } };
     this.topic = GENERAL;
     this.sys(`${a.name} hit ${this.config.target}. Face-off: ${a.name} vs ${b.name}.`);
     this.foCompose();
