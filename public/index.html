@@ -594,6 +594,7 @@ function connectTable(){
     if (e.code === 4404) { toast('That table has closed.'); return enterLobby(); }
     if (e.code === 4409) { toast('That table is full.'); return enterLobby(); }
     if (e.code === 4000) { setConn(false, 'Playing in another tab'); return; }
+    if (e.code === 4408) { toast(T.kickMsg || 'You were sent back to the lobby for being inactive.'); return enterLobby(); }
     setConn(false);
     setTimeout(connectTable, Math.min(8000, 400 * 2 ** T.retry++));
   };
@@ -619,6 +620,7 @@ function onTableMsg(m){
   } else if (m.t === 'chat') addChat(m);
   else if (m.t === 'answer') onAnswer(m);
   else if (m.t === 'error') toast(m.msg);
+  else if (m.t === 'kicked') T.kickMsg = m.msg;
 }
 
 function addChat(c){
@@ -721,6 +723,7 @@ function renderStage(S, prev){
     setTimeout(()=>inp.focus({preventScroll:true}), 50);
     inp.addEventListener('input', ()=>{
       SFX.key();
+      if (Date.now() - (T.lastPing||0) > 4000) { T.lastPing = Date.now(); sendT({t:'typing'}); }
       const r = paintTiles(inp.value, S.acro);
       const badIdx=r.per.indexOf('bad');
       if(r.valid){ hint.className='hint good'; hint.textContent='Fits. Press Enter to lock it in.'; }

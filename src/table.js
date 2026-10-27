@@ -13,6 +13,7 @@ const MAX_HUMANS = 14;
 const GRACE_MS = 60_000;   // keep a disconnected player's seat and score this long
 const IDLE_MS = 15_000;    // stop the game this long after the last player leaves
 const MAX_MSG = 2048;
+const IDLE_ROUNDS = 2;     // rounds with no activity before a player is sent to the lobby
 
 const uid = () => crypto.randomUUID().slice(0, 8);
 
@@ -61,7 +62,9 @@ export class Table extends DurableObject {
     if (m.t === 'hello') return this.hello(ws, m);
     const p = this.players.get(ws.pid);
     if (!p || p.ws !== ws) return;
+    p.active = true; // any message (typing, chat, answer, vote, pick) counts as activity
     switch (m.t) {
+      case 'typing': return;
       case 'answer': return this.answer(p, String(m.text || '').slice(0, 140));
       case 'vote': return this.vote(p, String(m.entry || ''));
       case 'pick': return this.choose(p, String(m.topic || ''));
@@ -81,11 +84,11 @@ export class Table extends DurableObject {
     if (p && !p.bot) {
       if (p.ws && p.ws !== ws) { try { p.ws.close(4000, 'You opened this table in another tab.'); } catch {} }
       const wasAway = !p.connected;
-      p.ws = ws; p.connected = true; p.name = name; p.hue = hue; p.leftAt = 0;
+      p.ws = ws; p.connected = true; p.name = name; p.hue = hue; p.leftAt = 0; p.active = true;
       if (wasAway) this.sys(`${name} is back.`);
     } else {
       if (this.humans().length >= MAX_HUMANS) { ws.send(JSON.stringify({ t: 'error', msg: 'This table is full.' })); return ws.close(4409, 'Table full'); }
-      p = { id: cid, name, hue, bot: false, ws, connected: true, score: 0, leftAt: 0 };
+      p = { id: cid, name, hue, bot: false, ws, connected: true, score: 0, leftAt: 0, active: true, idleRounds: 0 };
       this.players.set(cid, p);
       this.sys(`${name} sat down.`);
       if (this.phase !== 'idle' && Math.random() < .7) this.later(rnd(.6, 2), () => { const b = this.bots()[0] && pick(this.bots()); if (b) this.chat(b, pick(CHATTER.greet)); });
@@ -357,6 +360,7 @@ export class Table extends DurableObject {
     const forfeit = {};
     for (const p of this.humans()) if (!this.votes[p.id]) { forfeit[p.id] = gain[p.id] > 0; gain[p.id] = 0; }
     for (const id in gain) { const p = this.players.get(id); if (p) p.score += gain[id]; }
+    this.checkIdle();
     this.res = { tally, winner: winner ? winner.pid : null, gain, forfeit,
       entries: sorted.map(e => ({ id: e.id, pid: e.pid, text: e.text, why: why[e.pid] || [] })) };
     this.setPhase('results', this.T.results, () => this.afterResults());
@@ -366,6 +370,24 @@ export class Table extends DurableObject {
       if (w.bot) this.later(rnd(.6, 2), () => { if (this.players.has(w.id)) this.chat(w, pick(CHATTER.win)); });
       this.botChat('lose', .35);
     }
+  }
+
+  // A player who does nothing for 2 rounds in a row (no typing, answer, vote or chat) is
+  // probably gone or crashed, so they go back to the lobby and stop holding up the table.
+  checkIdle() {
+    for (const p of this.connected()) {
+      p.idleRounds = p.active ? 0 : (p.idleRounds || 0) + 1;
+      p.active = false;
+      if (p.idleRounds >= IDLE_ROUNDS) {
+        const ws = p.ws;
+        this.players.delete(p.id);
+        this.send(ws, { t: 'kicked', msg: `You were sent back to the lobby after ${IDLE_ROUNDS} rounds with no answers or votes.` });
+        try { ws.close(4408, 'Inactive'); } catch {}
+        this.sys(`${p.name} was moved to the lobby for being inactive.`);
+      }
+    }
+    if (this.connected().length === 0) this.later(1, () => this.stopGame());
+    this.report();
   }
 
   afterResults() {
