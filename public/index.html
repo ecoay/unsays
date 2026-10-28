@@ -481,11 +481,11 @@ import { ACCOUNT, loadMe, saveMe, openSheet, nameHTML, titleHTML, hashIntent, ru
 const BG = (() => {
   const cv = document.getElementById('bg');
   const gl = cv.getContext('webgl', {antialias:false, premultipliedAlpha:false});
-  const state = {energy:0, target:0, warp:0};
+  const state = {energy:0, target:0, warp:0, audio:null};
   if (!gl) return state;
   const vs = `attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}`;
   const fs = `precision mediump float;
-  uniform vec2 uR;uniform float uT;uniform float uE;uniform float uW;
+  uniform vec2 uR;uniform float uT;uniform float uE;uniform float uW;uniform float uA;uniform sampler2D uS;
   float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
   float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
   float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*n(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return v;}
@@ -501,16 +501,20 @@ const BG = (() => {
     col+=c*glow*(.42+.5*uE);
     float hz=-.2;
     if(p.y<hz){
-      float d=hz-p.y; float z=.32/d;
+      float d=hz-p.y;
+      // Music: the spectrum (bass in the middle, treble at the edges) lifts the far rows like an equalizer.
+      float sp=texture2D(uS,vec2(clamp(abs(p.x)*.8,0.,1.),.5)).r;
+      d=max(.004,d-sp*.07*exp(-d*7.));
+      float z=.32/d;
       vec2 g=vec2(p.x*z*1.6, z+uT*(.5+uE*2.2+uW*6.));
       float dl=min(abs(fract(g.x)-.5),abs(fract(g.y)-.5));
       float w=clamp(.02*z,.01,.2);
       float line=1.-smoothstep(0.,w,dl);
       float fade=clamp(d*2.6,0.,1.)*exp(-z*.06);
-      col+=mix(vec3(.55,.3,1.),vec3(.3,.95,1.),.5+.5*sin(uT*.3))*line*fade*(.5+.6*uE);
+      col+=mix(vec3(.55,.3,1.),vec3(.3,.95,1.),.5+.5*sin(uT*.3))*line*fade*(.5+.6*uE+.4*uA);
       col*=.85+.15*fade;
     }
-    col+=vec3(1.,.32,.82)*exp(-abs(p.y-hz)*22.)*(.28+.35*uE);
+    col+=vec3(1.,.32,.82)*exp(-abs(p.y-hz)*22.)*(.28+.35*uE+.2*uA);
     vec2 sp=floor(gl_FragCoord.xy/2.5);
     float s=h(sp); if(s>.9975 && p.y>hz) col+=vec3(.8,.85,1.)*(.4+.6*sin(uT*2.+s*80.));
     col*=1.-.55*dot(p*.75,p*.75);
@@ -524,8 +528,23 @@ const BG = (() => {
   const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
   const loc = gl.getAttribLocation(pr,'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
-  const uR=gl.getUniformLocation(pr,'uR'),uT=gl.getUniformLocation(pr,'uT'),uE=gl.getUniformLocation(pr,'uE'),uW=gl.getUniformLocation(pr,'uW');
+  const uR=gl.getUniformLocation(pr,'uR'),uT=gl.getUniformLocation(pr,'uT'),uE=gl.getUniformLocation(pr,'uE'),uW=gl.getUniformLocation(pr,'uW'),uA=gl.getUniformLocation(pr,'uA');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Music spectrum as a 1-row texture; eases to flat when the music stops.
+  const BINS = 64, spec = new Float32Array(BINS), specPx = new Uint8Array(BINS);
+  let bass = 0;
+  gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, BINS, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, specPx);
+  function audio(dt){
+    const live = !reduce && state.audio && state.audio(spec);
+    if (!live) { if (!bass) return; for (let i=0;i<BINS;i++) spec[i] *= Math.pow(.02, dt); }
+    let b = 0; for (let i=0;i<6;i++) b += spec[i]; b /= 6;
+    bass = b < .002 ? 0 : b;
+    for (let i=0;i<BINS;i++) specPx[i] = Math.min(255, spec[i]*255);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, BINS, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, specPx);
+  }
   const scale = .55;
   function size(){cv.width=Math.max(2,innerWidth*scale|0);cv.height=Math.max(2,innerHeight*scale|0);gl.viewport(0,0,cv.width,cv.height);}
   addEventListener('resize', size); size();
@@ -535,7 +554,8 @@ const BG = (() => {
     tt += dt*(reduce?.15:1);
     state.energy += (state.target-state.energy)*Math.min(1,dt*3);
     state.warp *= Math.pow(.15, dt);
-    gl.uniform2f(uR,cv.width,cv.height); gl.uniform1f(uT,tt); gl.uniform1f(uE,state.energy); gl.uniform1f(uW,state.warp);
+    audio(dt);
+    gl.uniform2f(uR,cv.width,cv.height); gl.uniform1f(uT,tt); gl.uniform1f(uE,state.energy); gl.uniform1f(uW,state.warp); gl.uniform1f(uA,bass);
     gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
     requestAnimationFrame(frame);
   }
@@ -1047,9 +1067,27 @@ const MUSIC = (() => {
   el.volume = .35;
   let on = store.get('unsays.music', true);
   const paint = () => { btn.setAttribute('aria-pressed', String(on)); btn.title = on ? 'Mute music' : 'Play music'; btn.setAttribute('aria-label', btn.title); };
+  // The grid reads the music through an analyser. It's wired up on the first play, which is always from a click.
+  let ctx = null, an = null, buf = null;
+  const wire = () => {
+    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    try {
+      ctx = new (window.AudioContext||window.webkitAudioContext)();
+      an = ctx.createAnalyser(); an.fftSize = 256; an.smoothingTimeConstant = .82;
+      ctx.createMediaElementSource(el).connect(an).connect(ctx.destination);
+      buf = new Uint8Array(an.frequencyBinCount);
+    } catch (e) { ctx = an = null; }
+  };
+  BG.audio = out => {
+    if (!an || el.paused) return false;
+    an.getByteFrequencyData(buf);
+    // Bins are linear in frequency; spread the low end out so bass gets most of the grid.
+    for (let i=0;i<out.length;i++) out[i] = buf[Math.floor(Math.pow(i/out.length, 1.6) * buf.length * .7)] / 255;
+    return true;
+  };
   // Browsers only allow playback after a click, so the first start happens from one.
-  const play = () => { if (on) el.play().catch(()=>{}); };
-  btn.addEventListener('click', () => { on = !on; store.set('unsays.music', on); paint(); if (on) el.play().catch(()=>{}); else el.pause(); });
+  const play = () => { if (on) { wire(); el.play().catch(()=>{}); } };
+  btn.addEventListener('click', () => { on = !on; store.set('unsays.music', on); paint(); if (on) play(); else el.pause(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) el.pause(); else if (on && started) play(); });
   let started = false;
   paint();
