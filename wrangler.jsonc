@@ -24,5 +24,16 @@
   // Secrets (set in the dashboard, not here): STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
   // GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, RESEND_API_KEY. Each feature turns on when its keys exist.
   "vars": { "SITE_URL": "https://unsays.com", "EMAIL_FROM": "unsays <login@unsays.com>", "CONTACT_EMAIL": "hello@unsays.com" },
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Pull request previews (Workers Builds runs `wrangler preview`). They get the game and the
+  // content pages but no database, so preview traffic never touches real accounts or purchases.
+  "previews": {
+    "durable_objects": {
+      "bindings": [
+        { "name": "TABLE", "class_name": "Table" },
+        { "name": "LOBBY", "class_name": "Lobby" }
+      ]
+    },
+    "vars": { "SITE_URL": "https://unsays.com", "EMAIL_FROM": "unsays <login@unsays.com>", "CONTACT_EMAIL": "hello@unsays.com" }
+  }
 }
