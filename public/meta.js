@@ -1,5 +1,5 @@
 // Accounts, the store, the flair locker and guilds. One sheet with three tabs, opened from the lobby.
-import { PACKS, GUILD_PASS, FLAIR, GIFTS, DROP, money, titleText } from './catalog.js';
+import { PACKS, GUILD_PASS, FLAIR, GIFTS, DROP, STREAK_REWARDS, FRIEND_REWARDS, checkinGifts, packById, money, titleText } from './catalog.js';
 import { GUILD_COLORS, DEFAULT_COLOR, logoImg, logoURL } from './guild-logo.js';
 
 const $ = s => document.querySelector(s);
@@ -42,7 +42,7 @@ function sheet() {
   el.className = 'modal-back'; el.id = 'metaSheet'; el.hidden = true;
   el.innerHTML = `<div class="modal glass sheet" role="dialog" aria-modal="true" aria-label="Your account">
     <div class="sheet-head"><nav class="sheet-tabs" role="tablist">
-      <button type="button" role="tab" data-tab="profile">Profile</button><button type="button" role="tab" data-tab="store">Store</button><button type="button" role="tab" data-tab="guild">Guild</button></nav>
+      <button type="button" role="tab" data-tab="profile">Profile</button><button type="button" role="tab" data-tab="daily">Daily</button><button type="button" role="tab" data-tab="store">Store</button><button type="button" role="tab" data-tab="guild">Guild</button></nav>
       <button class="btn small ghost" type="button" id="sheetClose" aria-label="Close">✕</button></div>
     <div class="sheet-body" id="sheetBody"></div></div>`;
   document.body.appendChild(el);
@@ -68,7 +68,7 @@ function paint() {
   const body = $('#sheetBody');
   const me = ACCOUNT.me;
   if (!me) { body.innerHTML = '<div class="muted">Accounts are offline right now. You can still play as a guest.</div>'; return; }
-  body.innerHTML = tab === 'store' ? storeHTML(me) : tab === 'guild' ? guildHTML(me) : profileHTML(me);
+  body.innerHTML = tab === 'store' ? storeHTML(me) : tab === 'guild' ? guildHTML(me) : tab === 'daily' ? dailyHTML(me) : profileHTML(me);
   wire(body, me);
 }
 
@@ -103,6 +103,46 @@ function profileHTML(me) {
       ${me.drop ? `Your gift drop adds ${me.drop.perDay} a day until ${new Date(me.drop.until).toLocaleDateString()}.` : ''}
       You have <b>${me.earned}</b> received gift${me.earned === 1 ? '' : 's'} to spend in the <a href="#store" data-goto="store">Gift Exchange</a>.</p>
     ${me.signedIn ? '<div class="actions"><button class="btn small ghost" type="button" id="signOut">Sign out</button></div>' : signInHTML()}`;
+}
+
+/* ---------- daily check-in + friend streaks ---------- */
+
+const rewardName = r => packById(r.id).name;
+
+function calendarHTML(days) {
+  const done = new Map(days.map(d => [d.day, d.gifts]));
+  const t = new Date(), y = t.getUTCFullYear(), m = t.getUTCMonth(), today = t.toISOString().slice(0, 10);
+  const first = new Date(Date.UTC(y, m, 1)).getUTCDay(), len = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const cells = Array.from({ length: first }, () => '<span></span>');
+  for (let d = 1; d <= len; d++) {
+    const key = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const g = done.get(key);
+    cells.push(`<span class="cal-d${g ? ' on' : ''}${key === today ? ' now' : ''}" title="${g ? `${g} gift${g > 1 ? 's' : ''}` : ''}">${g ? GIFTS.gift.icon : d}</span>`);
+  }
+  return `<div class="cal"><div class="cal-h">${t.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })}</div>
+    <div class="cal-g">${['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => `<b>${d}</b>`).join('')}${cells.join('')}</div></div>`;
+}
+
+function dailyHTML(me) {
+  const c = me.checkin, owned = new Set(me.owned);
+  // The next 7 days of rewards, starting from today's.
+  const start = c.today ? c.streak : c.streak + 1;
+  const strip = Array.from({ length: 7 }, (_, i) => {
+    const day = start + i, r = STREAK_REWARDS.find(x => x.days === day);
+    return `<div class="ci-day${i === 0 && c.today ? ' on' : ''}${i === 0 && !c.today ? ' next' : ''}${day % 7 === 0 ? ' big' : ''}"><span>Day ${day}</span><b>${GIFTS.gift.icon} ${checkinGifts(day)}</b>${r ? `<small>+ ${esc(rewardName(r))}</small>` : ''}</div>`;
+  }).join('');
+  const goal = r => owned.has(r.id) ? '<span class="tag good">Won</span>' : `<span class="tag dim">${r.days} days</span>`;
+  return `<div class="ci-head"><div><div class="ci-streak">🔥 ${c.streak}</div><div class="muted small">day${c.streak === 1 ? '' : 's'} in a row · best ${c.best}</div></div>
+      ${c.today ? `<span class="tag good">Checked in today</span>` : `<button class="btn prime" type="button" id="checkIn">Check in for ${GIFTS.gift.icon} ${checkinGifts(c.streak + 1)}</button>`}</div>
+    <p class="muted small">Check in once a day for free gifts. The longer your streak, the more you get, with a bonus every 7th day. Miss a day and it starts over, but you keep what you've won.</p>
+    <div class="ci-strip">${strip}</div>
+    ${calendarHTML(c.days)}
+    <h3>Streak rewards</h3>
+    <div class="skus">${STREAK_REWARDS.map(r => `<div class="sku"><div><b>${r.name ? `<span class="nf-${r.name}">${esc(me.name)}</span>` : esc(rewardName(r))}</b><div class="muted small">${r.name ? 'Graffiti name style' : 'Title'}</div></div>${goal(r)}</div>`).join('')}</div>
+    <h3>Friend streaks</h3>
+    <p class="muted small">Finish a game at the same table as someone each day to keep a 🔥 streak going with them. ${FRIEND_REWARDS.map(r => `${r.days} days: ${esc(rewardName(r))}`).join(' · ')}.</p>
+    ${me.friends.length ? `<div class="members">${me.friends.map(f => `<div class="mrow"><span class="orb sm" style="--h:${f.hue}"></span><span>${esc(f.name)}</span><b>🔥 ${f.streak}</b></div>`).join('')}</div>`
+      : '<p class="muted small">No streaks yet. Play a game with someone today and again tomorrow.</p>'}`;
 }
 
 /* ---------- store ---------- */
@@ -231,6 +271,11 @@ function wire(body, me) {
   }, 'Unlocked. Find it in your locker.'));
   body.querySelectorAll('[data-remove]').forEach(b => b.onclick = () => act(() => api('/api/guild/remove', { player: b.dataset.remove }), 'Removed.'));
   const on = (id, fn) => { const el = body.querySelector('#' + id); if (el) el.onclick = fn; };
+  on('checkIn', () => act(async () => {
+    const j = await api('/api/checkin', {});
+    const r = j.checkedIn;
+    if (r) toast(`Day ${r.streak}: +${r.gifts} gift${r.gifts > 1 ? 's' : ''}${r.rewards.length ? `, and you won ${r.rewards.map(id => packById(id).name).join(', ')}` : ''}.`);
+  }));
   on('signOut', () => act(async () => { await api('/api/auth/signout', {}); ACCOUNT.me = null; await saveMe(localName(), localHue()); }, 'Signed out.'));
   on('leaveGuild', () => act(() => api('/api/guild/leave', {}), 'You left the guild.'));
   on('resetInvite', () => act(() => api('/api/guild/invite', {}), 'The old link no longer works.'));
@@ -249,13 +294,14 @@ const localHue = () => { try { return JSON.parse(localStorage.getItem('unsays.hu
 
 // Hash links like /#store or /#bought-emoji_roast come back from other pages and Stripe.
 export function hashIntent(hash) {
-  if (/^#(store|bought-|guild|profile|account|signed-in|signin-)/.test(hash)) return hash.slice(1);
+  if (/^#(store|daily|bought-|guild|profile|account|signed-in|signin-)/.test(hash)) return hash.slice(1);
   return null;
 }
 export function runIntent(intent) {
   if (!intent) return;
   if (intent === 'store') return openSheet('store');
   if (intent === 'guild') return openSheet('guild');
+  if (intent === 'daily') return openSheet('daily');
   if (intent === 'profile' || intent === 'account') return openSheet('profile');
   if (intent === 'signed-in') { toast('Signed in.'); return; }
   if (intent === 'signin-failed') return toast('Sign-in didn\'t finish. Try again.');

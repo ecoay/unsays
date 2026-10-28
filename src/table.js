@@ -4,7 +4,7 @@ import {
   rnd, pick, shuffle, normal, clean, makeAcronym, checkAnswer, botPhrase, humanQuality, topicById, publicTopic,
 } from '../public/shared.js';
 import { EMOJI_FREE, GIFTS } from '../public/catalog.js';
-import { db, tableProfile, recordRound, recordGameWin, sendGift } from './db.js';
+import { db, tableProfile, recordRound, recordGameWin, sendGift, recordFriends } from './db.js';
 
 // One Table object per room. It owns the game clock, scoring and bots, and sends each
 // player their own view of the state after every change. Sockets are accepted without
@@ -316,7 +316,7 @@ export class Table extends DurableObject {
     if (this.entries.some(e => e.pid !== p.id && normal(e.text) === n)) return this.send(p.ws, { t: 'answer', ok: false, msg: 'Someone already wrote that exact line.' });
     const mine = this.entries.find(e => e.pid === p.id);
     if (mine) { mine.text = text; this.send(p.ws, { t: 'answer', ok: true, edited: true }); return this.broadcast(); }
-    this.entries.push({ id: uid(), pid: p.id, text, q: humanQuality(chk.words), at: Date.now() });
+    this.entries.push({ id: uid(), pid: p.id, text, q: humanQuality(chk.words, this.topic?.id), at: Date.now() });
     this.send(p.ws, { t: 'answer', ok: true });
     this.afterEntry();
   }
@@ -335,7 +335,8 @@ export class Table extends DurableObject {
   }
 
   weightedPick(opts) {
-    const w = opts.map(e => Math.pow(e.q, 2.2));
+    // Bots back the lines that make the most sense, with a little room for taste.
+    const w = opts.map(e => Math.pow(Math.max(.01, e.q), 3.2));
     let r = Math.random() * w.reduce((a, c) => a + c, 0);
     for (let i = 0; i < opts.length; i++) { r -= w[i]; if (r <= 0) return opts[i]; }
     return opts[opts.length - 1];
@@ -567,8 +568,27 @@ export class Table extends DurableObject {
     const c = this.byId(champ);
     if (!c.bot && c.prof && this.wasRanked) this.db().then(DB => DB && recordGameWin(DB, c.id, this.config.guild?.id || null)).catch(e => console.error('win', e));
     this.sys(`${c.name} wins the game ${Math.max(votes[a], votes[b])} to ${Math.min(votes[a], votes[b])}.`);
+    this.friendStreaks();
     if (c.bot) this.later(1, () => { if (this.players.has(c.id)) this.chat(c, pick(CHATTER.win)); });
     this.setPhase('over', this.T.over, () => this.newGame());
+  }
+
+  // Finishing a game together keeps a daily friend streak going. Each player hears about theirs.
+  friendStreaks() {
+    const here = this.connected().filter(p => p.prof);
+    if (here.length < 2) return;
+    this.db().then(async DB => {
+      if (!DB) return;
+      const news = new Map();
+      for (const r of await recordFriends(DB, here.map(p => p.id))) for (const [me, other] of [[r.a, r.b], [r.b, r.a]]) {
+        const o = this.players.get(other);
+        if (o) news.set(me, [...(news.get(me) || []), `${o.name} ${r.streak}`]);
+      }
+      for (const [me, list] of news) {
+        const p = this.players.get(me);
+        if (p?.connected) this.send(p.ws, { t: 'toast', msg: `🔥 Friend streaks: ${list.slice(0, 4).join(', ')}${list.length > 4 ? '…' : ''}` });
+      }
+    }).catch(e => console.error('friends', e));
   }
 
   /* ---------- views ---------- */

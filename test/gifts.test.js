@@ -69,3 +69,38 @@ test('guild logos use the LLC icon set and a fixed color list', async () => {
   assert.match(logoSVG(ICONS.cow, 'gold'), new RegExp(GUILD_COLORS.gold[1]));
   assert.equal(logoURL('<script>', 'nope'), '/gi/briefcase-pink.svg');
 });
+
+test('check-in streaks grow the reward and win flair at milestones', async () => {
+  const { checkIn } = await import('../src/db.js');
+  const { checkinGifts } = await import('../public/catalog.js');
+  assert.deepEqual([1, 6, 7, 8, 14, 15, 22, 30, 100].map(checkinGifts), [1, 1, 4, 2, 5, 3, 4, 4, 4]);
+  const DB = await fresh();
+  const id = await createPlayer(DB);
+  const t0 = Date.UTC(2026, 10, 1, 12);
+  let total = 0;
+  for (let d = 0; d < 14; d++) { const r = await checkIn(DB, id, t0 + d * DAY); assert.equal(r.streak, d + 1); total += r.gifts; }
+  assert.equal(await checkIn(DB, id, t0 + 13 * DAY + 3600_000), null, 'once a day');
+  const p = await getPlayer(DB, id);
+  assert.equal(p.gifts, total);
+  const owned = (await DB.prepare('SELECT item FROM owned WHERE player_id = ?').bind(id).all()).results.map(r => r.item).sort();
+  assert.deepEqual(owned, ['streak_14', 'streak_3', 'streak_7']);
+  assert.equal((await checkIn(DB, id, t0 + 16 * DAY)).streak, 1, 'a missed day starts over');
+  const me = await profile(DB, id);
+  assert.ok(me.unlocked.name.includes('graffiti'));
+  assert.equal(me.checkin.best, 14);
+});
+
+test('friend streaks count days played together', async () => {
+  const { recordFriends, friendStreaks } = await import('../src/db.js');
+  const DB = await fresh();
+  const [a, b, c] = [await createPlayer(DB, { name: 'a' }), await createPlayer(DB, { name: 'b' }), await createPlayer(DB, { name: 'c' })];
+  const t0 = Date.UTC(2026, 10, 1, 12);
+  assert.equal((await recordFriends(DB, [a, b, c], t0)).length, 3);
+  assert.equal((await recordFriends(DB, [a, b], t0 + 60_000)).length, 0, 'same day doesn\'t move it');
+  for (let d = 1; d < 7; d++) await recordFriends(DB, [a, b], t0 + d * DAY);
+  const mine = await friendStreaks(DB, a, t0 + 6 * DAY);
+  assert.equal(mine[0].streak, 7);
+  assert.equal(mine[0].name, 'b');
+  assert.equal(mine.length, 1, 'the streak with c lapsed');
+  assert.ok(await DB.prepare('SELECT 1 FROM owned WHERE player_id = ? AND item = ?').bind(b, 'fstreak_7').first());
+});

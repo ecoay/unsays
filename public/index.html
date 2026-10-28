@@ -33,7 +33,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;600&family=Rubik+Spray+Paint&display=swap">
 <style>
 /* Layout: full-bleed WebGL void; glass panels float above it. Lobby = grid of live tables. Table = stage + side rail (scoreboard, chat). */
 :root{
@@ -114,6 +114,25 @@ button{cursor:pointer}
 .nf-wrapped::after{content:" 🎀";-webkit-text-fill-color:initial;color:initial}
 @keyframes wrap{to{background-position:-60px 0}}
 @media (prefers-reduced-motion:reduce){.nf-wrapped{animation:none}}
+.nf-graffiti{font-family:"Rubik Spray Paint","Unbounded",system-ui,sans-serif;font-weight:400;letter-spacing:.02em;color:#c6ff4a;text-shadow:0 0 1px #0a0618,2px 2px 0 var(--pink),0 3px 6px rgba(198,255,74,.35)}
+.ping{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--pink);box-shadow:0 0 8px var(--pink)}
+.ci-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ci-streak{font-family:var(--f-display);font-weight:800;font-size:34px;line-height:1}
+.ci-strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.ci-day{display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid var(--line);border-radius:12px;padding:8px 2px;text-align:center;min-width:0}
+.ci-day span{font-family:var(--f-mono);font-size:10px;color:var(--ink-dim);white-space:nowrap}
+.ci-day b{font-size:13px;white-space:nowrap}
+.ci-day small{font-size:9px;color:var(--gold);line-height:1.2;overflow-wrap:anywhere}
+.ci-day.big{border-color:rgba(255,211,107,.5);background:rgba(255,211,107,.06)}
+.ci-day.on{border-color:var(--good);background:rgba(93,255,177,.08)}
+.ci-day.next{border-color:var(--pink);box-shadow:0 0 12px rgba(255,79,210,.35)}
+.cal{border:1px solid var(--line);border-radius:12px;padding:10px}
+.cal-h{font-weight:600;margin-bottom:6px}
+.cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}
+.cal-g b{font-family:var(--f-mono);font-size:10px;color:var(--ink-faint);font-weight:400}
+.cal-d{aspect-ratio:1;display:grid;place-items:center;border-radius:8px;font-size:12px;color:var(--ink-dim)}
+.cal-d.on{background:rgba(93,255,177,.12)}
+.cal-d.now{outline:1px solid var(--pink)}
 .nf-frost{background:linear-gradient(100deg,#e0f7ff,#8fdcff 50%,#fff);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:700;filter:drop-shadow(0 0 6px rgba(143,220,255,.6))}
 @keyframes flick{0%,92%,100%{opacity:1}94%{opacity:.4}96%{opacity:.9}}
 @keyframes glitch{0%{text-shadow:2px 0 var(--cyan),-2px 0 var(--pink)}50%{text-shadow:-2px 1px var(--cyan),2px -1px var(--pink)}}
@@ -421,6 +440,7 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
       <span class="spacer"></span>
       <button class="btn small ghost" id="muteBtn" type="button" aria-pressed="false">Effects on</button>
       <a class="btn small ghost" href="/leaderboard" target="_blank" rel="noopener">Leaderboard</a>
+      <button class="btn small" id="dailyBtn" type="button">Daily <span class="ping" id="dailyPing" hidden></span></button>
       <button class="btn small" id="storeBtn" type="button">Store</button>
       <button class="pill" id="mePill" type="button" title="Profile, locker and guild"><span class="orb sm" id="meOrb"></span><span id="meName"></span></button>
     </div>
@@ -697,7 +717,9 @@ function paintMe(){
   const me = ACCOUNT.me;
   $('#meName').innerHTML = nameHTML({ name: ME.name, tag: me && me.guild && me.guild.active ? me.guild.tag : null, style: me && me.equip.name });
   $('#meOrb').style.setProperty('--h',ME.hue);
+  $('#dailyPing').hidden = !me || me.checkin.today;
 }
+$('#dailyBtn').addEventListener('click', ()=>openSheet('daily'));
 $('#mePill').addEventListener('click', ()=>openSheet('profile'));
 $('#storeBtn').addEventListener('click', ()=>openSheet('store'));
 window.addEventListener('unsays:me', ()=>{ paintMe(); sendT({t:'refresh'}); });
@@ -784,7 +806,7 @@ function onTableMsg(m){
     T.offset = m.now - Date.now(); render(m);
   } else if (m.t === 'chat') addChat(m);
   else if (m.t === 'answer') onAnswer(m);
-  else if (m.t === 'error') toast(m.msg);
+  else if (m.t === 'error' || m.t === 'toast') toast(m.msg);
   else if (m.t === 'kicked') T.kickMsg = m.msg;
   else if (m.t === 'emoji') showEmoji(m);
   else if (m.t === 'giftFx') showGift(m);
