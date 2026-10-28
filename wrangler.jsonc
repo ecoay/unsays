@@ -16,5 +16,24 @@
   },
   // SQLite-backed Durable Objects are available on the Workers free plan.
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Table", "Lobby"] }],
-  "observability": { "enabled": true }
+  // Players, purchases, guilds, scores and the Hall of Fame. The Worker applies its own schema,
+  // so there is no migration step.
+  "d1_databases": [{ "binding": "DB", "database_name": "unsays", "database_id": "cf761d87-ab8f-4cf1-b7c5-564a4d4aa477" }],
+  // 00:10 UTC on the 1st: seal last month's boards into the Hall of Fame.
+  "triggers": { "crons": ["10 0 1 * *"] },
+  // Secrets (set in the dashboard, not here): STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
+  // GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, RESEND_API_KEY. Each feature turns on when its keys exist.
+  "vars": { "SITE_URL": "https://unsays.com", "EMAIL_FROM": "unsays <login@unsays.com>", "CONTACT_EMAIL": "hello@unsays.com" },
+  "observability": { "enabled": true },
+  // Pull request previews (Workers Builds runs `wrangler preview`). They get the game and the
+  // content pages but no database, so preview traffic never touches real accounts or purchases.
+  "previews": {
+    "durable_objects": {
+      "bindings": [
+        { "name": "TABLE", "class_name": "Table" },
+        { "name": "LOBBY", "class_name": "Lobby" }
+      ]
+    },
+    "vars": { "SITE_URL": "https://unsays.com", "EMAIL_FROM": "unsays <login@unsays.com>", "CONTACT_EMAIL": "hello@unsays.com" }
+  }
 }

@@ -3,6 +3,8 @@ import {
   GENERAL, TOPICS, SPEEDS, BOT_NAMES, CHATTER,
   rnd, pick, shuffle, normal, clean, makeAcronym, checkAnswer, botPhrase, humanQuality, topicById, publicTopic,
 } from '../public/shared.js';
+import { EMOJI_FREE, GIFTS } from '../public/catalog.js';
+import { db, tableProfile, recordRound, recordGameWin, sendGift } from './db.js';
 
 // One Table object per room. It owns the game clock, scoring and bots, and sends each
 // player their own view of the state after every change. Sockets are accepted without
@@ -14,6 +16,10 @@ const GRACE_MS = 60_000;   // keep a disconnected player's seat and score this l
 const IDLE_MS = 15_000;    // stop the game this long after the last player leaves
 const MAX_MSG = 2048;
 const IDLE_ROUNDS = 2;     // rounds with no activity before a player is sent to the lobby
+// Points reach the leaderboards only when enough real people played the round. Bots never count.
+const RANKED_MIN = 3;
+const RANKED_MIN_GUILD = 2;
+const EMOJI_GAP = 2000;    // one emoji per player every 2 seconds
 
 const uid = () => crypto.randomUUID().slice(0, 8);
 
@@ -44,17 +50,20 @@ export class Table extends DurableObject {
     }
     const [client, server] = Object.values(new WebSocketPair());
     server.accept();
+    // Set by the Worker from the session cookie, so a player can't claim someone else's account.
+    server.verifiedPid = req.headers.get('x-player') || null;
     if (!this.config) {
       server.close(4404, 'This table has closed.');
       return new Response(null, { status: 101, webSocket: client });
     }
-    server.addEventListener('message', e => { try { this.onMessage(server, e.data); } catch (err) { console.error(err); } });
+    server.addEventListener('message', e => { try { Promise.resolve(this.onMessage(server, e.data)).catch(err => console.error(err)); } catch (err) { console.error(err); } });
     server.addEventListener('close', () => this.onClose(server));
     server.addEventListener('error', () => this.onClose(server));
     return new Response(null, { status: 101, webSocket: client });
   }
 
   lobby() { return this.env.LOBBY.get(this.env.LOBBY.idFromName('main')); }
+  db() { return db(this.env)?.catch(e => { console.error('db', e); return null; }) || Promise.resolve(null); }
 
   onMessage(ws, raw) {
     if (typeof raw !== 'string' || raw.length > MAX_MSG) return;
@@ -72,12 +81,30 @@ export class Table extends DurableObject {
       case 'again': if (this.phase === 'over') this.newGame(); return;
       case 'start': return this.startFromRoom(p, m.bots !== false);
       case 'bots': if (this.phase === 'waiting' && p.id === this.hostId()) { this.useBots = m.bots !== false; this.broadcast(); } return;
+      case 'emoji': return this.emoji(p, String(m.e || ''), m.entry ? String(m.entry) : null);
+      case 'gift': return this.gift(p, String(m.entry || ''), m.kind === 'crown' ? 'crown' : 'gift');
+      case 'refresh': return this.loadProfile(p).then(() => this.broadcast());
     }
   }
 
-  hello(ws, m) {
-    const cid = String(m.cid || '');
+  async loadProfile(p) {
+    if (!p.verified) return;
+    const DB = await this.db();
+    if (!DB) return;
+    try { p.prof = await tableProfile(DB, p.id); } catch (e) { console.error('profile', e); }
+  }
+
+  async hello(ws, m) {
+    const cid = ws.verifiedPid || String(m.cid || '');
     if (!/^[a-z0-9-]{8,40}$/i.test(cid)) return ws.close(4400, 'Bad hello');
+    if (this.config.guild) {
+      const DB = await this.db();
+      const row = DB && ws.verifiedPid && await DB.prepare('SELECT guild_id FROM players WHERE id = ?').bind(cid).first();
+      if (!row || row.guild_id !== this.config.guild.id) {
+        this.send(ws, { t: 'error', msg: 'This table is for guild members only.' });
+        return ws.close(4403, 'Members only');
+      }
+    }
     const name = String(m.name || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 18) || 'guest';
     const hue = Math.abs(Number(m.hue) | 0) % 360;
     let p = this.players.get(cid);
@@ -88,12 +115,14 @@ export class Table extends DurableObject {
       if (wasAway) this.sys(`${name} is back.`);
     } else {
       if (this.humans().length >= MAX_HUMANS) { ws.send(JSON.stringify({ t: 'error', msg: 'This table is full.' })); return ws.close(4409, 'Table full'); }
-      p = { id: cid, name, hue, bot: false, ws, connected: true, score: 0, leftAt: 0, active: true, idleRounds: 0 };
+      p = { id: cid, name, hue, bot: false, ws, connected: true, score: 0, leftAt: 0, active: true, idleRounds: 0, verified: !!ws.verifiedPid };
       this.players.set(cid, p);
       this.sys(`${name} sat down.`);
       if (this.phase !== 'idle' && Math.random() < .7) this.later(rnd(.6, 2), () => { const b = this.bots()[0] && pick(this.bots()); if (b) this.chat(b, pick(CHATTER.greet)); });
     }
     ws.pid = cid;
+    await this.loadProfile(p);
+    if (p.ws !== ws) return; // reconnected again while loading
     this.send(ws, { t: 'welcome', you: cid, config: this.publicConfig(), chat: this.chatLog });
     if (this.phase === 'idle') {
       // Tables people create open as a waiting room so the host can invite friends first.
@@ -134,7 +163,7 @@ export class Table extends DurableObject {
   send(ws, msg) { try { ws.send(JSON.stringify(msg)); } catch {} }
 
   chat(p, text, kind = 'say') {
-    const msg = { t: 'chat', kind, name: p ? p.name : null, hue: p ? p.hue : 0, text: clean(text, this.config.mode) };
+    const msg = { t: 'chat', kind, name: p ? p.name : null, hue: p ? p.hue : 0, tag: p?.prof?.guild?.tag || null, style: p?.prof?.flair.name || null, text: clean(text, this.config.mode) };
     this.chatLog.push(msg); if (this.chatLog.length > 30) this.chatLog.shift();
     for (const h of this.connected()) this.send(h.ws, msg);
   }
@@ -360,9 +389,12 @@ export class Table extends DurableObject {
     const forfeit = {};
     for (const p of this.humans()) if (!this.votes[p.id]) { forfeit[p.id] = gain[p.id] > 0; gain[p.id] = 0; }
     for (const id in gain) { const p = this.players.get(id); if (p) p.score += gain[id]; }
+    this.rankRound(gain, winner ? winner.pid : null);
     this.checkIdle();
-    this.res = { tally, winner: winner ? winner.pid : null, gain, forfeit,
-      entries: sorted.map(e => ({ id: e.id, pid: e.pid, text: e.text, why: why[e.pid] || [] })) };
+    const fx = pid => this.players.get(pid)?.prof?.flair.reveal || null;
+    this.res = { tally, winner: winner ? winner.pid : null, gain, forfeit, gifts: {},
+      winFx: winner ? this.players.get(winner.pid)?.prof?.flair.win || null : null,
+      entries: sorted.map(e => ({ id: e.id, pid: e.pid, text: e.text, why: why[e.pid] || [], fx: fx(e.pid) })) };
     this.setPhase('results', this.T.results, () => this.afterResults());
     if (winner) {
       const w = this.byId(winner.pid);
@@ -370,6 +402,56 @@ export class Table extends DurableObject {
       if (w.bot) this.later(rnd(.6, 2), () => { if (this.players.has(w.id)) this.chat(w, pick(CHATTER.win)); });
       this.botChat('lose', .35);
     }
+  }
+
+  /* ---------- leaderboards, emoji and gifts ---------- */
+
+  ranked() {
+    const real = this.connected().filter(p => p.prof);
+    return real.length >= (this.config.guild ? RANKED_MIN_GUILD : RANKED_MIN) ? real : null;
+  }
+
+  rankRound(gain, winnerId) {
+    const real = this.ranked();
+    this.wasRanked = !!real;
+    if (!real) return;
+    const rows = real.map(p => ({ id: p.id, points: gain[p.id] || 0, won: p.id === winnerId }));
+    this.db().then(DB => DB && recordRound(DB, rows, this.config.guild?.id || null)).catch(e => console.error('rank', e));
+  }
+
+  emoji(p, e, entryId) {
+    const now = Date.now();
+    if (now - (p.lastEmoji || 0) < EMOJI_GAP) return;
+    const mine = p.prof ? p.prof.emoji : EMOJI_FREE;
+    if (!mine.includes(e)) return;
+    // Emoji land on a specific line only after the votes are revealed, so they can't steer a vote.
+    const revealed = (this.phase === 'results' || this.phase === 'foResults') && this.res;
+    const entry = revealed && entryId && this.res.entries.some(x => x.id === entryId) ? entryId : null;
+    p.lastEmoji = now;
+    const msg = { t: 'emoji', e, from: p.id, entry, big: !!p.prof?.big.includes(e) };
+    for (const h of this.connected()) this.send(h.ws, msg);
+  }
+
+  async gift(p, entryId, kind) {
+    if ((this.phase !== 'results' && this.phase !== 'foResults') || !this.res) return;
+    const e = this.res.entries.find(x => x.id === entryId);
+    const to = e && this.players.get(e.pid);
+    const fail = msg => this.send(p.ws, { t: 'gift', ok: false, msg });
+    if (!p.prof) return fail('Gifts need an account. Open your profile to set one up.');
+    if (!e || !to || to.bot || !to.prof) return fail('Gifts can only go to real players.');
+    if (to.id === p.id) return fail('You can\'t gift your own line.');
+    const g = GIFTS[kind];
+    const DB = await this.db();
+    if (!DB) return fail('Gifts are offline right now.');
+    const ok = await sendGift(DB, { from: p.id, to: to.id, kind, cost: g.cost, line: e.text, acro: this.acro, table: this.config.id });
+    if (!ok) return fail(`You need ${g.cost} gift${g.cost > 1 ? 's' : ''}. Get more in the store.`);
+    p.prof.gifts -= g.cost;
+    if (this.res) this.res.gifts[e.id] = (this.res.gifts[e.id] || 0) + g.cost;
+    this.send(p.ws, { t: 'gift', ok: true, left: p.prof.gifts });
+    const msg = { t: 'giftFx', kind, icon: g.icon, from: p.id, to: to.id, entry: e.id };
+    for (const h of this.connected()) this.send(h.ws, msg);
+    this.sys(`${p.name} sent ${g.icon} to ${to.name}'s line.`);
+    this.broadcast();
   }
 
   // A player who does nothing for 2 rounds in a row (no typing, answer, vote or chat) is
@@ -473,7 +555,7 @@ export class Table extends DurableObject {
     const tally = { [this.fo.a]: 0, [this.fo.b]: 0 };
     for (const v in this.votes) { const e = this.entries.find(x => x.id === this.votes[v]); if (e) tally[e.pid]++; }
     for (const id in tally) { this.fo.votes[id] += tally[id]; const e = this.entries.find(x => x.pid === id); this.fo.speed[id] += e.at - this.foStart; }
-    this.res = { tally, entries: this.entries.map(e => ({ id: e.id, pid: e.pid, text: e.text })) };
+    this.res = { tally, gifts: {}, entries: this.entries.map(e => ({ id: e.id, pid: e.pid, text: e.text })) };
     this.setPhase('foResults', this.T.foResults, () => { this.fo.r++; if (this.fo.r < 3) this.foCompose(); else this.gameOver(); });
   }
 
@@ -483,6 +565,7 @@ export class Table extends DurableObject {
     const champ = votes[a] !== votes[b] ? (votes[a] > votes[b] ? a : b) : (speed[a] <= speed[b] ? a : b);
     this.champ = champ;
     const c = this.byId(champ);
+    if (!c.bot && c.prof && this.wasRanked) this.db().then(DB => DB && recordGameWin(DB, c.id, this.config.guild?.id || null)).catch(e => console.error('win', e));
     this.sys(`${c.name} wins the game ${Math.max(votes[a], votes[b])} to ${Math.min(votes[a], votes[b])}.`);
     if (c.bot) this.later(1, () => { if (this.players.has(c.id)) this.chat(c, pick(CHATTER.win)); });
     this.setPhase('over', this.T.over, () => this.newGame());
@@ -510,7 +593,10 @@ export class Table extends DurableObject {
     const v = {
       t: 'state', now: Date.now(), phase: ph, endsAt: this.endsAt || 0, dur: this.dur || 0,
       round: this.round || 0, acro: this.acro || '', topic: publicTopic(this.topic || GENERAL), target: this.config.target,
-      players: [...this.players.values()].map(x => ({ id: x.id, name: x.name, hue: x.hue, bot: x.bot, score: x.score, connected: x.bot || x.connected, status: ph === 'idle' || ph === 'starting' ? '' : this.status(x) })),
+      players: [...this.players.values()].map(x => ({ id: x.id, name: x.name, hue: x.hue, bot: x.bot, score: x.score, connected: x.bot || x.connected, status: ph === 'idle' || ph === 'starting' ? '' : this.status(x),
+        tag: x.prof?.guild?.tag || null, style: x.prof?.flair.name || null, title: x.prof?.flair.title || null, acct: !!x.prof })),
+      me: p.prof ? { gifts: p.prof.gifts, emoji: p.prof.emoji, account: p.prof.account } : { gifts: 0, emoji: EMOJI_FREE, account: false },
+      ranked: !!this.ranked(), guild: this.config.guild || null,
     };
     if (this.fo) v.fo = { a: this.fo.a, b: this.fo.b, r: this.fo.r, votes: this.fo.votes };
     if (ph === 'compose' || ph === 'foCompose') {
@@ -523,10 +609,10 @@ export class Table extends DurableObject {
         canVote: ph === 'vote' || (p.id !== this.fo.a && p.id !== this.fo.b) };
     }
     if (ph === 'results') {
-      v.results = { winner: this.res.winner, gain: this.res.gain, missedVote: !this.votes[p.id], forfeit: !!this.res.forfeit[p.id],
-        entries: this.res.entries.map(e => ({ ...e, text: clean(e.text, mode) })) };
+      v.results = { winner: this.res.winner, gain: this.res.gain, missedVote: !this.votes[p.id], forfeit: !!this.res.forfeit[p.id], winFx: this.res.winFx,
+        entries: this.res.entries.map(e => ({ ...e, text: clean(e.text, mode), gifts: this.res.gifts[e.id] || 0 })) };
     }
-    if (ph === 'foResults') v.results = { tally: this.res.tally, entries: this.res.entries.map(e => ({ ...e, text: clean(e.text, mode) })) };
+    if (ph === 'foResults') v.results = { tally: this.res.tally, entries: this.res.entries.map(e => ({ ...e, text: clean(e.text, mode), gifts: this.res.gifts[e.id] || 0 })) };
     if (ph === 'pick') v.pick = { picker: this.picker, opts: this.opts.map(publicTopic), chosen: this.chosen ? this.chosen.id : null };
     if (ph === 'over') v.champ = this.champ;
     if (ph === 'waiting') v.waiting = { host: this.hostId(), useBots: this.useBots };
