@@ -316,7 +316,7 @@ export class Table extends DurableObject {
     if (this.entries.some(e => e.pid !== p.id && normal(e.text) === n)) return this.send(p.ws, { t: 'answer', ok: false, msg: 'Someone already wrote that exact line.' });
     const mine = this.entries.find(e => e.pid === p.id);
     if (mine) { mine.text = text; this.send(p.ws, { t: 'answer', ok: true, edited: true }); return this.broadcast(); }
-    this.entries.push({ id: uid(), pid: p.id, text, q: humanQuality(chk.words), at: Date.now() });
+    this.entries.push({ id: uid(), pid: p.id, text, q: humanQuality(chk.words, this.topic?.id), at: Date.now() });
     this.send(p.ws, { t: 'answer', ok: true });
     this.afterEntry();
   }
@@ -335,7 +335,8 @@ export class Table extends DurableObject {
   }
 
   weightedPick(opts) {
-    const w = opts.map(e => Math.pow(e.q, 2.2));
+    // Bots back the lines that make the most sense, with a little room for taste.
+    const w = opts.map(e => Math.pow(Math.max(.01, e.q), 3.2));
     let r = Math.random() * w.reduce((a, c) => a + c, 0);
     for (let i = 0; i < opts.length; i++) { r -= w[i]; if (r <= 0) return opts[i]; }
     return opts[opts.length - 1];

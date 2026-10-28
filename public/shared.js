@@ -111,24 +111,69 @@ export function checkAnswer(text, acro) {
   return { words, firsts, per, valid, extra: words.length > acro.length };
 }
 
-// Bot entries get a hidden quality score that bots use to weight their votes.
+// Bot lines follow a small grammar, so they read like a sentence instead of word salad:
+// each letter gets a word of the part of speech its slot needs (s subject, d possessive,
+// j adjective, n noun, a adverb, v past-tense verb).
+const POS_RAW = {
+  s: 'aunt brother baby cousin dad everyone grandma he I Janet kids mom nobody she uncle we you',
+  d: 'a all every his her my our some the their your',
+  j: 'angry awkward bad big broke crazy drunk dramatic embarrassing extra fake gross hot hungover innocent jealous lazy loud mean naked nervous nice old pregnant quiet rich sweaty tiny ugly upset vegan weird wet young zany',
+  n: 'avocado aunt bathroom baby bonus boyfriend cat coffee cousin crush dinner dog divorce ego email feelings friend grandma gym hamster homework ice jeans joke kale karaoke kids lawyer lunch mistake money mom mustache napkin nephew office pants party pizza question rash rent secret sister smell tax tooth uncle underwear vacation velvet wife wedding Xbox yoga zipper zombie',
+  a: 'accidentally actually always basically barely clearly deeply definitely emotionally eventually finally frankly genuinely gently honestly instantly just kinda literally loudly lowkey mostly never nightly obviously only oddly probably quietly quickly really rarely secretly seriously totally unfortunately usually vaguely very weirdly yesterday',
+  v: 'ate blamed broke borrowed cancelled cheated cried deleted divorced dumped emailed faked farted forgot fired ghosted googled hated hugged invoiced iced judged joked kissed kicked licked lied lost married missed napped nagged owed paid pranked promised quit questioned ruined ran regretted smelled slept stole texted tackled tickled unfriended upset vomited vented wanted wore yelled zapped zoomed',
+};
+const POS = {};
+for (const k in POS_RAW) { POS[k] = {}; for (const w of POS_RAW[k].split(' ')) (POS[k][w[0].toUpperCase()] ||= []).push(w); }
+const PATTERNS = {
+  3: ['svn', 'sav', 'asv', 'dnv', 'djn', 'snv', 'jnv'],
+  4: ['svdn', 'dnvn', 'savn', 'asvn', 'djnv', 'dnav', 'svjn', 'jnvn'],
+  5: ['svdjn', 'dnavn', 'adnvn', 'djnav', 'savdn', 'djnvn', 'asvdn'],
+  6: ['dnavdn', 'asvdjn', 'savdjn', 'djnvdn', 'adjnvn'],
+  7: ['djnavdn', 'adnvdjn', 'sasvdjn', 'djnvadn'],
+};
+const FUNC = new Set("a an and are as at be but by can't didn't do don't for from got had has have he her his i i'm if in is it its just me my no not of on or our she so that the their then they this to too was we were what when why will with you your".split(' '));
+const VOCAB = new Set([...Object.values(POS_RAW), ...Object.values(WORDS_RAW)].join(' ').toLowerCase().split(' '));
+
+const wordFor = (pos, L, topicBank) => {
+  const tw = topicBank && topicBank[L];
+  // Topic words are mostly nouns; past-tense ones work as verbs.
+  const fit = tw && tw.filter(w => pos === 'n' ? !/ed$/.test(w) : pos === 'v' ? /ed$/.test(w) : false);
+  if (fit && fit.length && Math.random() < .55) return { w: pick(fit), topical: true };
+  const list = POS[pos][L];
+  return list ? { w: pick(list) } : null;
+};
+
 export function botPhrase(acro, topicId) {
   const b = topicId && BANKS[topicId];
-  const words = acro.split('').map(L => {
-    const tw = b && b.bank[L];
-    return tw && Math.random() < .45 ? pick(tw) : pick(WORDS[L]);
-  });
-  let s = words.join(' ');
+  const letters = acro.split('');
+  let best = null;
+  for (const pat of shuffle(PATTERNS[letters.length] || [])) {
+    const words = letters.map((L, i) => wordFor(pat[i], L, b && b.bank));
+    const fit = words.filter(Boolean).length / letters.length;
+    if (!best || fit > best.fit) best = { words, fit };
+    if (fit === 1) break;
+  }
+  const words = letters.map((L, i) => best?.words[i] || { w: pick(WORDS[L]) });
+  let s = words.map(x => x.w).join(' ');
   s = s[0].toUpperCase() + s.slice(1);
   if (Math.random() < .3) s += pick(['!', '?', '...', '.']);
-  const topical = b ? words.filter(w => b.set.has(w)).length : 0;
-  return { text: s, q: rnd(.4, 1.3) + topical * .25 };
+  const topical = words.filter(x => x.topical).length;
+  // A line that fits its grammar all the way is worth voting for; a patched one much less.
+  const fit = best ? best.fit : 0;
+  return { text: s, q: rnd(.55, .95) * (fit === 1 ? 1.25 : .45 + fit * .45) + topical * .25 };
 }
 
-// Quality guess for a human line, so bot votes aren't purely random.
-export function humanQuality(words) {
-  const longish = words.filter(w => w.replace(/[^a-z]/gi, '').length > 3).length / Math.max(1, words.length);
-  return rnd(.85, 1.45) + longish * .35;
+// How much a bot likes a line a person wrote: real words, glue words that make it a sentence,
+// and words that fit the topic. Keyboard mashing and word salad score low.
+export function humanQuality(words, topicId) {
+  const lw = words.map(w => w.toLowerCase().replace(/[^a-z']/g, ''));
+  const real = lw.filter(w => w && /[aeiouy]/.test(w) && !/[^aeiouy']{5,}/.test(w) && !/(.)\1\1/.test(w) && w.length <= 14).length / Math.max(1, lw.length);
+  if (real < .6) return rnd(.05, .2);
+  const known = lw.filter(w => VOCAB.has(w) || FUNC.has(w)).length / Math.max(1, lw.length);
+  const glue = lw.some(w => FUNC.has(w)) ? .2 : 0;
+  const b = topicId && BANKS[topicId];
+  const topical = b ? lw.filter(w => [...b.set].some(t => t.toLowerCase() === w)).length : 0;
+  return rnd(.7, 1) * real + glue + known * .2 + Math.min(2, topical) * .25;
 }
 
 export function topicById(id) { return id === 'general' ? GENERAL : TOPICS.find(t => t.id === id); }

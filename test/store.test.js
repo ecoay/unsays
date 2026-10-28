@@ -44,3 +44,15 @@ test('month helpers', () => {
   assert.equal(monthLabel('2026-11'), 'Nov 2026');
   assert.match(monthKey(), /^\d{4}-\d{2}$/);
 });
+
+test('bots favor lines that make sense', async () => {
+  const { botPhrase, humanQuality, checkAnswer, makeAcronym } = await import('../public/shared.js');
+  for (let i = 0; i < 200; i++) {
+    const acro = makeAcronym(3 + (i % 5));
+    const p = botPhrase(acro, i % 2 ? 'sports' : null);
+    assert.ok(checkAnswer(p.text.replace(/[!?.]+$/, ''), acro).valid, p.text);
+  }
+  const avg = (words, topic) => { let t = 0; for (let i = 0; i < 50; i++) t += humanQuality(words.split(' '), topic); return t / 50; };
+  assert.ok(avg('My boss fired me', 'boss') > avg('Jealous score dont cat', 'boss'));
+  assert.ok(avg('Jkdf Sdfg Qwrt') < .3, 'keyboard mash');
+});
