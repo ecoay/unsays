@@ -1,5 +1,6 @@
 // Accounts, the store, the flair locker and guilds. One sheet with three tabs, opened from the lobby.
-import { PACKS, GUILD_PASS, FLAIR, GIFTS, money, titleText } from './catalog.js';
+import { PACKS, GUILD_PASS, FLAIR, GIFTS, DROP, money, titleText } from './catalog.js';
+import { GUILD_COLORS, DEFAULT_COLOR, logoImg, logoURL } from './guild-logo.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -10,7 +11,10 @@ export const ACCOUNT = { me: null, providers: { google: false, email: false }, s
 async function api(path, body, method = body ? 'POST' : 'GET') {
   const r = await fetch(path, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin' });
   let j = {}; try { j = await r.json(); } catch {}
-  if (j.me !== undefined) { ACCOUNT.me = j.me; ACCOUNT.providers = j.providers || ACCOUNT.providers; ACCOUNT.store = !!j.store; announce(); }
+  if (j.me !== undefined) {
+    ACCOUNT.me = j.me; ACCOUNT.providers = j.providers || ACCOUNT.providers; ACCOUNT.store = !!j.store; announce();
+    if (j.me?.drop?.dropped) toast(`Gift drop: +${j.me.drop.dropped} gifts today.`);
+  }
   if (!r.ok) throw Object.assign(new Error(j.error || 'Something went wrong.'), { data: j });
   return j;
 }
@@ -95,7 +99,9 @@ function profileHTML(me) {
     <h3>Locker</h3>
     <div class="row2">${select('name', me, 'Name style')}${select('title', me, 'Title')}</div>
     <div class="row2">${select('win', me, 'Win animation')}${select('reveal', me, 'Vote reveal')}</div>
-    <p class="muted small">You have <b>${me.gifts}</b> gift${me.gifts === 1 ? '' : 's'} to send. ${GIFTS.gift.icon} costs 1 and ${GIFTS.crown.icon} costs ${GIFTS.crown.cost}.</p>
+    <p class="muted small">You have <b>${me.gifts}</b> gift${me.gifts === 1 ? '' : 's'} to send. ${GIFTS.gift.icon} costs 1 and ${GIFTS.crown.icon} costs ${GIFTS.crown.cost}.
+      ${me.drop ? `Your gift drop adds ${me.drop.perDay} a day until ${new Date(me.drop.until).toLocaleDateString()}.` : ''}
+      You have <b>${me.earned}</b> received gift${me.earned === 1 ? '' : 's'} to spend in the <a href="#store" data-goto="store">Gift Exchange</a>.</p>
     ${me.signedIn ? '<div class="actions"><button class="btn small ghost" type="button" id="signOut">Sign out</button></div>' : signInHTML()}`;
 }
 
@@ -104,19 +110,61 @@ function profileHTML(me) {
 function storeHTML(me) {
   const owned = new Set(me.owned);
   const closed = !ACCOUNT.store;
-  const card = p => {
-    const have = p.kind !== 'gifts' && (owned.has(p.id) || (p.bundle && p.bundle.every(b => owned.has(b))) || PACKS.some(x => x.bundle && owned.has(x.id) && x.bundle.includes(p.id)));
-    return `<div class="sku"><div><b>${esc(p.name)}</b>${p.emoji ? ` <span>${p.emoji.join(' ')}</span>` : ''}<div class="muted small">${esc(p.blurb)}</div></div>
-      ${have ? '<span class="tag good">Owned</span>' : `<button class="btn small ${closed ? '' : 'prime'}" type="button" data-buy="${p.id}" ${closed ? 'disabled' : ''}>${money(p.price)}</button>`}</div>`;
-  };
-  const group = (kind, title) => `<h3>${title}</h3><div class="skus">${PACKS.filter(p => p.kind === kind).map(card).join('')}</div>`;
+  const has = p => owned.has(p.id) || (p.bundle && p.bundle.every(b => owned.has(b))) || PACKS.some(x => x.bundle && owned.has(x.id) && x.bundle.includes(p.id));
+  const info = p => `<div><b>${esc(p.name)}</b>${p.emoji ? ` <span>${p.emoji.join(' ')}</span>` : ''}<div class="muted small">${esc(p.blurb)}</div></div>`;
+  const card = p => `<div class="sku${p.kind === 'drop' ? ' hot' : ''}">${info(p)}
+      ${p.kind !== 'gifts' && p.kind !== 'drop' && has(p) ? '<span class="tag good">Owned</span>' : `<button class="btn small ${closed ? '' : 'prime'}" type="button" data-buy="${p.id}" ${closed ? 'disabled' : ''}>${money(p.price)}</button>`}</div>`;
+  const swap = p => `<div class="sku">${info(p)}${xbtn(p)}</div>`;
+  const group = (kinds, title) => `<h3>${title}</h3><div class="skus">${PACKS.filter(p => kinds.includes(p.kind)).map(card).join('')}</div>`;
+  const xbtn = p => has(p) ? '<span class="tag good">Owned</span>' : `<button class="btn small${me.earned >= p.xcost ? ' prime' : ''}" type="button" data-swap="${p.id}" ${me.earned >= p.xcost ? '' : 'disabled'}>${GIFTS.gift.icon} ${p.xcost}</button>`;
+  const xtitles = PACKS.filter(p => p.kind === 'exchange' && p.grants?.title);
   return `${closed ? '<p class="notice">The store opens soon. Everything here is coming at launch.</p>' : ''}
     <div class="sku hot"><div><b>Guild Pass</b><div class="muted small">Your crew's own 14-seat table, guild leaderboard and tag. ${money(GUILD_PASS.monthly.price)} a month.</div></div><button class="btn small" type="button" data-goto="guild">See guilds</button></div>
-    ${group('flair', 'Flair')}${group('emoji', 'Emoji')}${group('gifts', 'Gifts')}
+    ${group(['flair'], 'Flair')}${group(['emoji'], 'Emoji')}${group(['drop', 'gifts'], 'Gifts')}
+    ${me.drop ? `<p class="muted small">Your gift drop runs until ${new Date(me.drop.until).toLocaleDateString()}. Buying another adds ${DROP.days} days.</p>` : ''}
+    <h3>Gift Exchange</h3>
+    <p class="muted small">When people gift your lines, those gifts land here. You have <b>${me.earned}</b> to spend. Only gifts you received count, never ones you bought.</p>
+    <span class="label">Exchange only</span>
+    <div class="skus">${PACKS.filter(p => p.kind === 'exchange' && !p.grants?.title).map(swap).join('')}</div>
+    <div class="xtitles">${xtitles.map(p => `<div class="xt"><b>${esc(p.name)}</b>${xbtn(p)}</div>`).join('')}</div>
+    <span class="label">Trade for packs</span>
+    <div class="skus">${PACKS.filter(p => p.xcost && p.kind !== 'exchange').map(swap).join('')}</div>
     <p class="muted small">Nothing in the store adds points or votes. Payments are handled by Stripe.</p>`;
 }
 
 /* ---------- guild ---------- */
+
+// Logo picker: a tab per icon group, a grid of icons and a row of colors. The icon set loads on first use.
+const pickerHTML = (icon, color) => `<div class="gpick" data-icon="${esc(icon || 'briefcase')}" data-color="${esc(color || DEFAULT_COLOR)}">
+  <span class="label">Logo</span><input type="hidden" name="icon"><input type="hidden" name="color">
+  <div class="gp-head"><img class="glogo gp-preview" width="52" height="52" alt="Guild logo" src="${logoURL(icon, color)}">
+    <div class="gp-colors" role="radiogroup" aria-label="Logo color">${Object.entries(GUILD_COLORS).map(([k, [name, hex]]) =>
+      `<button type="button" class="gp-color" role="radio" data-color="${k}" aria-label="${name}" style="--c:${hex}"></button>`).join('')}</div></div>
+  <div class="gp-tabs" role="tablist"></div><div class="gp-grid"><span class="muted small">Loading icons…</span></div></div>`;
+
+let iconSet = null;
+async function mountPicker(el) {
+  const { ICONS, ICON_GROUPS } = await (iconSet ||= import('./guild-icons.js'));
+  const icon = el.querySelector('[name=icon]'), color = el.querySelector('[name=color]');
+  icon.value = ICONS[el.dataset.icon] ? el.dataset.icon : 'briefcase'; color.value = el.dataset.color;
+  let group = ICONS[icon.value][1];
+  const preview = () => {
+    el.querySelector('.gp-preview').src = logoURL(icon.value, color.value);
+    el.style.setProperty('--gc', GUILD_COLORS[color.value][1]);
+    el.querySelectorAll('.gp-color').forEach(b => b.setAttribute('aria-checked', b.dataset.color === color.value));
+    el.querySelectorAll('.gp-icon').forEach(b => b.setAttribute('aria-pressed', b.dataset.icon === icon.value));
+  };
+  const paintGrid = () => {
+    el.querySelector('.gp-tabs').innerHTML = ICON_GROUPS.map((g, i) => `<button type="button" role="tab" data-group="${i}" aria-selected="${i === group}">${g}</button>`).join('');
+    el.querySelector('.gp-grid').innerHTML = Object.entries(ICONS).filter(([, e]) => e[1] === group).map(([k, [label, , vb, body]]) =>
+      `<button type="button" class="gp-icon" data-icon="${k}" aria-label="${esc(label)}" title="${esc(label)}"><svg viewBox="${vb}" fill="currentColor" aria-hidden="true">${body}</svg></button>`).join('');
+    el.querySelectorAll('[data-group]').forEach(b => b.onclick = () => { group = +b.dataset.group; paintGrid(); });
+    el.querySelectorAll('.gp-icon').forEach(b => b.onclick = () => { icon.value = b.dataset.icon; preview(); });
+    preview();
+  };
+  el.querySelectorAll('.gp-color').forEach(b => b.onclick = () => { color.value = b.dataset.color; preview(); });
+  paintGrid();
+}
 
 function guildHTML(me) {
   const g = me.guild;
@@ -126,12 +174,13 @@ function guildHTML(me) {
     <form id="guildForm" class="gform">
       <label><span class="label">Guild name</span><input class="field" name="name" maxlength="28" required placeholder="The Gas Giants"></label>
       <label><span class="label">Tag (2 to 5 letters)</span><input class="field" name="tag" maxlength="5" required placeholder="FART" style="text-transform:uppercase"></label>
+      ${pickerHTML()}
       <div class="row2"><label><span class="label">Speed</span><select name="speed"><option value="turbo">Turbo</option><option value="classic">Classic</option></select></label>
       <label><span class="label">Language</span><select name="mode"><option value="adult">Adult language</option><option value="clean">Keep it clean</option></select></label></div>
       <div class="actions"><button class="btn prime" type="submit">Create guild</button></div>
       <p class="muted small">The guild's table, tag and leaderboard switch on when you add a Guild Pass (${money(GUILD_PASS.monthly.price)} a month).</p></form>`;
   const status = g.active ? `<span class="tag good">Active</span> until ${new Date(g.passUntil).toLocaleDateString()}` : '<span class="tag dim">Paused</span>';
-  const head = `<div class="ph"><div><div class="ph-name"><span class="gtag">[${esc(g.tag)}]</span>${esc(g.name)}</div><div class="muted">${status}</div></div></div>`;
+  const head = `<div class="ph">${logoImg(g, 52)}<div><div class="ph-name"><span class="gtag">[${esc(g.tag)}]</span>${esc(g.name)}</div><div class="muted">${status}</div></div></div>`;
   if (!g.owner) return `${head}<p class="muted">You're a member. ${g.active ? 'Find the guild table in the lobby.' : 'The guild table is paused until the owner renews the Guild Pass.'}</p>
     <div class="actions">${g.active ? `<a class="btn" href="/g/${esc(g.slug)}" target="_blank" rel="noopener">Guild leaderboard</a>` : ''}<button class="btn ghost" type="button" id="leaveGuild">Leave guild</button></div>`;
   const link = `${location.origin}/join/${g.invite}`;
@@ -148,6 +197,7 @@ function guildHTML(me) {
     <div class="members">${g.members.map(m => `<div class="mrow"><span class="orb sm" style="--h:${m.hue}"></span><span>${esc(m.name)}${m.id === me.id ? ' (you)' : ''}</span>${m.id === me.id ? '' : `<button class="btn small ghost" type="button" data-remove="${m.id}">Remove</button>`}</div>`).join('')}</div>
     <h3>Table settings</h3>
     <form id="guildEdit" class="gform"><label><span class="label">Guild name</span><input class="field" name="name" maxlength="28" value="${esc(g.name)}"></label>
+      ${pickerHTML(g.icon, g.color)}
       <div class="row2"><label><span class="label">Speed</span><select name="speed"><option value="turbo" ${g.speed === 'turbo' ? 'selected' : ''}>Turbo</option><option value="classic" ${g.speed === 'classic' ? 'selected' : ''}>Classic</option></select></label>
       <label><span class="label">Language</span><select name="mode"><option value="adult" ${g.mode === 'adult' ? 'selected' : ''}>Adult language</option><option value="clean" ${g.mode === 'clean' ? 'selected' : ''}>Keep it clean</option></select></label></div>
       <div class="actions"><button class="btn small" type="submit">Save</button></div></form>`;
@@ -174,6 +224,11 @@ function wire(body, me) {
     try { const j = await api('/api/checkout', { item: b.dataset.buy }); location.href = j.url; }
     finally { b.disabled = false; }
   }));
+  body.querySelectorAll('.gpick').forEach(el => mountPicker(el).catch(() => { el.querySelector('.gp-grid').textContent = 'Icons didn\'t load. Try again.'; }));
+  body.querySelectorAll('[data-swap]').forEach(b => b.onclick = () => act(async () => {
+    b.disabled = true;
+    await api('/api/exchange', { item: b.dataset.swap });
+  }, 'Unlocked. Find it in your locker.'));
   body.querySelectorAll('[data-remove]').forEach(b => b.onclick = () => act(() => api('/api/guild/remove', { player: b.dataset.remove }), 'Removed.'));
   const on = (id, fn) => { const el = body.querySelector('#' + id); if (el) el.onclick = fn; };
   on('signOut', () => act(async () => { await api('/api/auth/signout', {}); ACCOUNT.me = null; await saveMe(localName(), localHue()); }, 'Signed out.'));

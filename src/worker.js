@@ -1,15 +1,20 @@
 import { Table } from './table.js';
 import { Lobby } from './lobby.js';
-import { db, profile, getPlayer, setEquip, newId, now, monthKey, prevMonth, archiveMonth, topPlayers, topGuilds, topGifted } from './db.js';
+import { db, profile, getPlayer, setEquip, exchange, newId, now, monthKey, prevMonth, archiveMonth, topPlayers, topGuilds, topGifted } from './db.js';
 import { sessionPlayer, ensurePlayer, signOut, providers, googleStart, googleCallback, emailStart, emailVerify } from './auth.js';
 import { stripeReady, checkout, portal, verifySignature, handleEvent } from './stripe.js';
 import { page, robots, sitemap, llms, llmsFull, canonicalHost } from './pages.js';
+import { ICONS, DEFAULT_ICON } from '../public/guild-icons.js';
+import { GUILD_COLORS, DEFAULT_COLOR, logoSVG } from '../public/guild-logo.js';
 
 export { Table, Lobby };
 
 const TABLE_PATH = /^\/ws\/table\/([a-z0-9-]{1,40})$/;
 const TAG_RE = /^[A-Z0-9]{2,5}$/;
 const MAX_MEMBERS = 50;
+const LOGO_PATH = /^\/gi\/([a-z0-9-]{1,24})-([a-z]{1,12})\.svg$/;
+const pickIcon = (v, keep) => ICONS[v] ? v : keep || DEFAULT_ICON;
+const pickColor = (v, keep) => GUILD_COLORS[v] ? v : keep || DEFAULT_COLOR;
 
 const json = (data, status = 200, cookie) => {
   const h = new Headers({ 'content-type': 'application/json', 'cache-control': 'no-store' });
@@ -69,6 +74,10 @@ async function api(req, env, DB, url) {
     if (name) await DB.prepare('UPDATE players SET name = ?, hue = ?, seen_at = ? WHERE id = ?').bind(name, Math.abs(Number(b.hue) | 0) % 360, now(), pid).run();
     return reply(await me());
   }
+  if (path === '/api/exchange' && method === 'POST') {
+    const err = await exchange(DB, pid, String((await readJSON(req)).item || ''));
+    return reply(err ? { error: err } : await me(), err ? 400 : 200);
+  }
   if (path === '/api/me/equip' && method === 'POST') { await setEquip(DB, pid, await readJSON(req)); return reply(await me()); }
   if (path === '/api/auth/signout' && method === 'POST') return json({ ok: true }, 200, await signOut(DB, req));
   if (path === '/api/auth/email' && method === 'POST') {
@@ -104,8 +113,8 @@ async function api(req, env, DB, url) {
     const id = newId('g');
     try {
       await DB.batch([
-        DB.prepare('INSERT INTO guilds (id, slug, name, tag, owner_id, invite, speed, mode, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-          .bind(id, slug, name, tag, pid, newId('', 16), b.speed === 'classic' ? 'classic' : 'turbo', b.mode === 'clean' ? 'clean' : 'adult', now()),
+        DB.prepare('INSERT INTO guilds (id, slug, name, tag, owner_id, invite, speed, mode, icon, color, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+          .bind(id, slug, name, tag, pid, newId('', 16), b.speed === 'classic' ? 'classic' : 'turbo', b.mode === 'clean' ? 'clean' : 'adult', pickIcon(b.icon), pickColor(b.color), now()),
         DB.prepare('UPDATE players SET guild_id = ? WHERE id = ?').bind(id, pid),
       ]);
     } catch (e) {
@@ -120,7 +129,8 @@ async function api(req, env, DB, url) {
     const g = await DB.prepare('SELECT * FROM guilds WHERE owner_id = ?').bind(pid).first();
     if (!g) return reply({ error: 'Only the guild owner can change settings.' }, 403);
     const name = cleanText(b.name, 28) || g.name;
-    await DB.prepare('UPDATE guilds SET name = ?, speed = ?, mode = ? WHERE id = ?').bind(name.length >= 3 ? name : g.name, b.speed === 'classic' ? 'classic' : 'turbo', b.mode === 'clean' ? 'clean' : 'adult', g.id).run();
+    await DB.prepare('UPDATE guilds SET name = ?, speed = ?, mode = ?, icon = ?, color = ? WHERE id = ?')
+      .bind(name.length >= 3 ? name : g.name, b.speed === 'classic' ? 'classic' : 'turbo', b.mode === 'clean' ? 'clean' : 'adult', pickIcon(b.icon, g.icon), pickColor(b.color, g.color), g.id).run();
     await syncLobby(env);
     return reply(await me());
   }
@@ -163,6 +173,11 @@ export default {
     const path = url.pathname;
     const DB = await Promise.resolve(db(env)).catch(e => { console.error('db', e); return null; });
 
+    const logo = path.match(LOGO_PATH);
+    if (logo) {
+      if (!ICONS[logo[1]] || !GUILD_COLORS[logo[2]]) return new Response('Not found', { status: 404 });
+      return new Response(logoSVG(ICONS[logo[1]], logo[2]), { headers: { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=31536000, immutable' } });
+    }
     if (path === '/ws/lobby' || path.startsWith('/api/tables')) return lobby(env).fetch(await withPlayer(req, DB));
     const m = path.match(TABLE_PATH);
     if (m) {

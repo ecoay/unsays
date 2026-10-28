@@ -1,5 +1,6 @@
 import { GENERAL, TOPICS, PACKS as TOPIC_PACKS, clean } from '../public/shared.js';
-import { PACKS, GUILD_PASS, GIFTS, EMOJI_FREE, money } from '../public/catalog.js';
+import { PACKS, GUILD_PASS, GIFTS, EMOJI_FREE, DROP, money } from '../public/catalog.js';
+import { logoImg } from '../public/guild-logo.js';
 import { monthKey, monthLabel, prevMonth, archiveMonth, topPlayers, topGuilds, topGifted, guildBoard, hall, guildActive } from './db.js';
 
 // Server-rendered pages for search engines and answer engines: how to play, topics, FAQ,
@@ -50,6 +51,8 @@ export const FAQ = [
   ['What is the unsays Guild Pass?', 'The Guild Pass costs $2.99 a month (or $24 a year). It gives your crew its own members-only 14-seat table in the lobby, a guild leaderboard with its own Hall of Fame, a guild tag next to every member\'s name, and no ads for the owner.'],
   ['How does the unsays leaderboard work?', 'Points from public tables count on the global leaderboard when at least 3 real people played the round. Bots never count. Every board resets on the 1st of the month, and that month\'s top 3 players, top guild and most-gifted line go into the Hall of Fame for good, with a free champion title.'],
   ['What are flair, emoji and gift packs?', 'Flair packs change how your name and wins look: name styles, win animations, vote-reveal effects and titles. Emoji packs add reactions that float over the table. Gifts let you reward a line you loved after the votes are in. They are all cosmetic and never change the score.'],
+  ['What is the unsays gift drop?', 'The monthly gift drop costs $2.99 and adds 2 gifts to your account every day for 30 days, the cheapest way to get gifts. Each day\'s gifts arrive when you open the game, and a day you miss isn\'t carried over. Buying another adds 30 more days.'],
+  ['What is the unsays Gift Exchange?', 'Gifts other players send to your lines are banked as received gifts. Spend them in the Gift Exchange on flair and emoji packs, or on titles and emoji you can only get there, like "The Gifted" and "They Love Me". Gifts you bought can\'t be exchanged, and gifts can\'t be traded between players.'],
 ];
 
 const HOWTO = [
@@ -233,7 +236,7 @@ async function leaderboard(env, DB, url) {
   let rows = [];
   if (DB) rows = board === 'guilds' ? await topGuilds(DB, m) : board === 'gifted' ? await topGifted(DB, m) : await topPlayers(DB, m);
   const list = rows.length ? rows.map((r, i) => board === 'guilds'
-    ? `<div class="row"><span class="pos">${i + 1}</span><span class="who">${tag(r.tag)}<a href="/g/${esc(r.slug)}">${nameOf(r.name)}</a><small>${r.members} member${r.members === 1 ? '' : 's'}</small></span><span class="pts">${r.points}</span></div>`
+    ? `<div class="row"><span class="pos">${i + 1}</span><span class="who">${logoImg(r, 18)}${tag(r.tag)}<a href="/g/${esc(r.slug)}">${nameOf(r.name)}</a><small>${r.members} member${r.members === 1 ? '' : 's'}</small></span><span class="pts">${r.points}</span></div>`
     : board === 'gifted'
       ? `<div class="row"><span class="pos">${i + 1}</span><span class="who">${orb(r.hue)}${nameOf(r.name)}</span><span class="pts">👑 ${r.gifts}</span></div>`
       : `<div class="row"><span class="pos">${i + 1}</span><span class="who">${orb(r.hue)}${tag(r.tag)}${nameOf(r.name)}<small>${r.game_wins ? `${r.game_wins} win${r.game_wins === 1 ? '' : 's'}` : ''}</small></span><span class="pts">${r.points}</span></div>`).join('')
@@ -297,18 +300,20 @@ function guildPass(env) {
 }
 
 function shop(env) {
-  const group = (kind, title, note) => `<section><h2>${title}</h2>${note ? `<p class="muted">${note}</p>` : ''}<div class="grid">${PACKS.filter(p => p.kind === kind).map(p => `<article class="card"><h3>${esc(p.name)}</h3><div class="price">${money(p.price)}</div><p class="muted">${esc(p.blurb)}</p>${p.emoji ? `<div class="chips">${p.emoji.map(e => `<span class="chip">${e}</span>`).join('')}</div>` : ''}</article>`).join('')}</div></section>`;
+  const price = p => p.price ? money(p.price) : `${GIFTS.gift.icon} ${p.xcost}<small> received gifts</small>`;
+  const group = (kinds, title, note) => `<section><h2>${title}</h2>${note ? `<p class="muted">${note}</p>` : ''}<div class="grid">${PACKS.filter(p => kinds.includes(p.kind)).map(p => `<article class="card"><h3>${esc(p.name)}</h3><div class="price">${price(p)}</div><p class="muted">${esc(p.blurb)}</p>${p.emoji ? `<div class="chips">${p.emoji.map(e => `<span class="chip">${e}</span>`).join('')}</div>` : ''}</article>`).join('')}</div></section>`;
   return layout(env, {
     path: '/shop', title: 'unsays shop: flair, emoji and gift packs',
     description: 'Make your name stand out, react with emoji and reward the best lines. unsays flair, emoji and gift packs are one-time purchases and never add points.',
-    schema: [{ '@context': 'https://schema.org', '@type': 'ItemList', name: 'unsays shop', itemListElement: PACKS.map((p, i) => ({ '@type': 'ListItem', position: i + 1, item: { '@type': 'Product', name: `unsays ${p.name}`, description: p.blurb, offers: { '@type': 'Offer', price: (p.price / 100).toFixed(2), priceCurrency: 'USD' } } })) },
+    schema: [{ '@context': 'https://schema.org', '@type': 'ItemList', name: 'unsays shop', itemListElement: PACKS.filter(p => p.price).map((p, i) => ({ '@type': 'ListItem', position: i + 1, item: { '@type': 'Product', name: `unsays ${p.name}`, description: p.blurb, offers: { '@type': 'Offer', price: (p.price / 100).toFixed(2), priceCurrency: 'USD' } } })) },
       crumbs(env, [['unsays', '/'], ['Shop', '/shop']])],
     body: `<section class="hero"><span class="label">Shop</span><h1>Bragging rights, <span class="holo">for sale</span></h1>
       <p class="lede">Packs are bought once and kept forever. <b>None of them add points or votes.</b></p>
       <div class="cta"><a class="btn prime" href="/#store">Open the store</a></div></section>
-      ${group('flair', 'Flair packs', 'Change how your name and wins look to the whole room.')}
-      ${group('emoji', 'Emoji packs', `Everyone gets ${EMOJI_FREE.join(' ')} free. Emoji float over the table while people write, and land on a specific line only after the votes are in.`)}
-      ${group('gifts', 'Gift packs', `Send ${GIFTS.gift.icon} (1 gift) or ${GIFTS.crown.icon} (${GIFTS.crown.cost} gifts) to a line you loved after the votes. The author's profile counts every gift.`)}`,
+      ${group(['flair'], 'Flair packs', 'Change how your name and wins look to the whole room.')}
+      ${group(['emoji'], 'Emoji packs', `Everyone gets ${EMOJI_FREE.join(' ')} free. Emoji float over the table while people write, and land on a specific line only after the votes are in.`)}
+      ${group(['drop', 'gifts'], 'Gift packs', `Send ${GIFTS.gift.icon} (1 gift) or ${GIFTS.crown.icon} (${GIFTS.crown.cost} gifts) to a line you loved after the votes. The monthly gift drop is the cheapest way to gift: ${DROP.perDay} gifts land in your account each day you play, for ${DROP.days} days.`)}
+      ${group(['exchange'], 'Gift Exchange', 'Gifts other players send to your lines are yours to spend here. These titles and emoji can\'t be bought with money, and only gifts you received count. Flair and emoji packs can be traded for received gifts too.')}`,
   });
 }
 
@@ -323,7 +328,7 @@ async function guildPage(env, DB, slug) {
     path: `/g/${slug}`, title: `[${g.tag}] ${clean(g.name, 'clean')}: unsays guild`,
     description: `The ${clean(g.name, 'clean')} guild on unsays: ${members} members, monthly guild leaderboard and Hall of Fame.`,
     schema: [crumbs(env, [['unsays', '/'], ['Leaderboard', '/leaderboard?board=guilds'], [g.name, `/g/${slug}`]])],
-    body: `<section class="hero"><span class="label">Guild · ${members} member${members === 1 ? '' : 's'}</span><h1><span class="holo">[${esc(g.tag)}]</span> ${nameOf(g.name)}</h1>
+    body: `<section class="hero"><span class="label">Guild · ${members} member${members === 1 ? '' : 's'}</span><h1>${logoImg(g, 56)} <span class="holo">[${esc(g.tag)}]</span> ${nameOf(g.name)}</h1>
       <p class="lede">Points scored at the guild's own table, ${esc(monthLabel(m))}.</p></section>
       <section><div class="board">${rows.length ? rows.map((r, i) => `<div class="row"><span class="pos">${i + 1}</span><span class="who">${orb(r.hue)}${nameOf(r.name)}<small>${r.gifts ? '👑 ' + r.gifts : ''}</small></span><span class="pts">${r.points}</span></div>`).join('') : '<div class="empty">No games at the guild table yet this month.</div>'}</div></section>
       ${months.length ? `<section><h2>Guild Hall of Fame</h2>${months.map(mo => `<div class="card"><span class="label">${esc(mo.label)}</span><div>${mo.players.map(r => `${['🥇', '🥈', '🥉'][r.rank - 1]} ${nameOf(r.name)} · ${r.value}`).join('<br>')}</div></div>`).join('')}</section>` : ''}
@@ -336,7 +341,7 @@ async function joinPage(env, DB, code) {
   return layout(env, {
     path: `/join/${code}`, title: g ? `Join [${g.tag}] ${g.name} on unsays` : 'Invite expired · unsays', noindex: true,
     description: 'You were invited to an unsays guild.',
-    body: g ? `<section class="hero"><span class="label">Guild invite</span><h1>Join <span class="holo">[${esc(g.tag)}]</span> ${nameOf(g.name)}</h1>
+    body: g ? `<section class="hero"><span class="label">Guild invite</span><h1>${logoImg(g, 56)} Join <span class="holo">[${esc(g.tag)}]</span> ${nameOf(g.name)}</h1>
       <p class="lede">Members wear the guild tag at every table, play at the guild's own table and climb the guild leaderboard. <b>Joining is free.</b></p>
       ${guildActive(g) ? '' : '<p class="notice">This guild\'s table is paused until the owner renews the Guild Pass. You can still join.</p>'}
       <div class="cta"><button class="btn prime" id="join" type="button">Join the guild</button><a class="btn" href="/">Not now</a></div><p id="msg" class="muted" role="status"></p></section>
@@ -371,7 +376,7 @@ function legal(env, path) {
       <h2>Playing</h2><ul class="list"><li>You must be 13 or older to play, and 18 or older for Adult language tables.</li>
         <li>Don't post hate, threats, other people's private information, or anything illegal. We can remove names, lines, guilds or accounts that do.</li>
         <li>Don't cheat, script the game, or farm leaderboard points. We can reset scores we believe were not earned fairly.</li></ul>
-      <h2>Purchases</h2><ul class="list"><li>Flair, emoji and gift packs are one-time purchases of digital items for use in unsays. They have no cash value and can't be transferred.</li>
+      <h2>Purchases</h2><ul class="list"><li>Flair, emoji and gift packs are one-time purchases of digital items for use in unsays. They have no cash value and can't be transferred. Gift drop gifts arrive one day at a time, and days you don't play aren't carried over. Received gifts can only be spent in the Gift Exchange.</li>
         <li>The Guild Pass renews every month or year until you cancel. You can cancel any time from your guild settings, and it stays active until the end of the period you paid for.</li>
         <li>If something you bought doesn't work, email <a href="mailto:${contact}">${contact}</a> within 14 days and we'll fix it or refund you.</li>
         <li>Gifts that have been sent can't be refunded.</li></ul>
@@ -445,7 +450,7 @@ Key facts:
 - First to 30 points (15 on Sprint tables) plays a 3-round face-off for the win. A Turbo game takes about 10 to 15 minutes.
 - 15 topics plus General. The round winner picks the next topic.
 - Monthly global leaderboard (only rounds with at least 3 real people count) and a permanent Hall of Fame.
-- Optional purchases, none of which add points: Guild Pass $2.99/month or $24/year (members-only 14-seat guild table, guild leaderboard, guild tag, no ads for the owner), flair packs $1.99 to $4.99, emoji packs $1.99 to $6.99, gift packs $1.99 to $9.99.
+- Optional purchases, none of which add points: Guild Pass $2.99/month or $24/year (members-only 14-seat guild table, guild leaderboard, guild tag, no ads for the owner), flair packs $1.99 to $4.99, emoji packs $1.99 to $6.99, gift packs $1.99 to $9.99, and a monthly gift drop at $2.99 (2 gifts a day for 30 days). Gifts a player receives can be spent in the Gift Exchange on packs and exchange-only titles.
 
 ## Pages
 - [How to play](${s}/how-to-play): rules, scoring, timing and tips
@@ -477,6 +482,9 @@ ${FAQ.map(([q, a]) => `### ${q}\n${a}`).join('\n\n')}
 
 ## Store
 - ${GUILD_PASS.monthly.name}: ${money(GUILD_PASS.monthly.price)} a month, or ${money(GUILD_PASS.yearly.price)} a year
-${PACKS.map(p => `- ${p.name}: ${money(p.price)}. ${p.blurb}`).join('\n')}
+${PACKS.filter(p => p.price).map(p => `- ${p.name}: ${money(p.price)}. ${p.blurb}`).join('\n')}
+
+## Gift Exchange (paid with gifts received from other players)
+${PACKS.filter(p => p.xcost).map(p => `- ${p.name}: ${p.xcost} received gifts${p.kind === 'exchange' ? ' (exchange only)' : ''}`).join('\n')}
 `;
 }

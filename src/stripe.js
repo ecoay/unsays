@@ -1,5 +1,5 @@
-import { GUILD_PASS, PACKS, packById } from '../public/catalog.js';
-import { getPlayer, now } from './db.js';
+import { GUILD_PASS, PACKS, DROP, DAY, packById } from '../public/catalog.js';
+import { getPlayer, now, startDrop } from './db.js';
 
 // Stripe Checkout through the REST API. Prices are sent inline from the catalog, so nothing
 // has to be set up in the Stripe dashboard besides the webhook.
@@ -57,8 +57,8 @@ export async function checkout(DB, env, req, playerId, item) {
     return { status: 200, url: s.url };
   }
   const pack = packById(item);
-  if (!pack) return { status: 400, error: 'That item isn\'t in the store.' };
-  if (pack.kind !== 'gifts') {
+  if (!pack?.price) return { status: 400, error: 'That item isn\'t in the store.' };
+  if (pack.kind !== 'gifts' && pack.kind !== 'drop') {
     const have = await DB.prepare('SELECT 1 FROM owned WHERE player_id = ? AND item = ?').bind(playerId, item).first();
     if (have) return { status: 400, error: 'You already own that pack.' };
   }
@@ -119,6 +119,7 @@ export async function handleEvent(DB, env, ev) {
     const pack = packById(item);
     if (!pack) return {};
     if (pack.kind === 'gifts') await DB.prepare('UPDATE players SET gifts = gifts + ? WHERE id = ?').bind(pack.gifts, pid).run();
+    else if (pack.kind === 'drop') await startDrop(DB, pid);
     else await DB.prepare('INSERT OR IGNORE INTO owned (player_id, item, at) VALUES (?, ?, ?)').bind(pid, item, now()).run();
     return { player: pid };
   }
@@ -128,7 +129,8 @@ export async function handleEvent(DB, env, ev) {
     const s = await stripe(env, 'GET', `checkout/sessions?payment_intent=${o.payment_intent}&limit=1`);
     const cs = s.data?.[0];
     const pack = cs && packById(cs.metadata?.item);
-    if (pack && pack.kind !== 'gifts') await DB.prepare('DELETE FROM owned WHERE player_id = ? AND item = ?').bind(cs.metadata.player_id, pack.id).run();
+    if (pack?.kind === 'drop') await DB.prepare('UPDATE players SET drop_until = MAX(0, drop_until - ?) WHERE id = ?').bind(DROP.days * DAY, cs.metadata.player_id).run();
+    else if (pack && pack.kind !== 'gifts') await DB.prepare('DELETE FROM owned WHERE player_id = ? AND item = ?').bind(cs.metadata.player_id, pack.id).run();
     return { player: cs?.metadata?.player_id };
   }
   return {};
