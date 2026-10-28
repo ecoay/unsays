@@ -7,7 +7,7 @@
   "workers_dev": true,
   "preview_urls": true,
   // Static client (index.html, shared.js). Requests that don't match a file fall through to the Worker.
-  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/"] },
   "durable_objects": {
     "bindings": [
       { "name": "TABLE", "class_name": "Table" },
@@ -23,7 +23,12 @@
   "triggers": { "crons": ["10 0 1 * *"] },
   // Secrets (set in the dashboard, not here): STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
   // GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, RESEND_API_KEY. Each feature turns on when its keys exist.
-  "vars": { "SITE_URL": "https://unsays.com", "EMAIL_FROM": "unsays <login@unsays.com>", "CONTACT_EMAIL": "hello@unsays.com" },
+  // AdSense: set ADSENSE_CLIENT to your publisher ID (ca-pub-...) and each slot to an ad unit ID from
+  // AdSense > Ads > By ad unit. Ads stay off while ADSENSE_CLIENT is empty, and only run on SITE_URL's host.
+  "vars": { "SITE_URL": "https://unsays.com", "EMAIL_FROM": "unsays <login@unsays.com>", "CONTACT_EMAIL": "hello@unsays.com",
+    "ADSENSE_CLIENT": "", "ADSENSE_SLOT_LOBBY": "", "ADSENSE_SLOT_BREAK": "", "ADSENSE_SLOT_CONTENT": "",
+    // "on" sends unsays.<account>.workers.dev to SITE_URL with a 301. Turn on only after unsays.com loads the game.
+    "CANONICAL_REDIRECT": "" },
   "observability": { "enabled": true },
   // Pull request previews (Workers Builds runs `wrangler preview`). They get the game and the
   // content pages but no database, so preview traffic never touches real accounts or purchases.

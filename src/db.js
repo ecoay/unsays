@@ -79,6 +79,11 @@ export const getPlayer = (DB, id) => DB.prepare('SELECT * FROM players WHERE id 
 
 export function guildActive(g) { return !!g && g.pass_until > now(); }
 
+// The Guild Pass owner plays ad-free. Same rule as profile().adFree, without building the whole profile.
+export async function isAdFree(DB, id) {
+  return !!await DB.prepare('SELECT 1 FROM guilds WHERE owner_id = ? AND pass_until > ?').bind(id, now()).first();
+}
+
 // The view a Table needs to dress a player: guild tag, equipped flair and usable emoji.
 export async function tableProfile(DB, id) {
   await claimDrop(DB, id);

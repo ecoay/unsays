@@ -101,6 +101,10 @@ button{cursor:pointer}
 .about a,.site-foot a{color:var(--cyan)}
 .site-foot{display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:center;font-size:13px;color:var(--ink-faint);padding:8px 0 4px}
 .site-foot a{color:var(--ink-dim)}
+/* Ads: lobby and between games only, always labeled, kept clear of buttons. */
+.ad-slot{display:flex;flex-direction:column;gap:6px;margin:24px auto 0;width:min(970px,100%);min-height:120px}
+.ad-slot[hidden]{display:none}
+.ad-label{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
 /* flair and account bits */
 .glogo{display:inline-block;vertical-align:-4px;margin-right:6px;border-radius:50%;flex:none}
 .gtag{font-family:var(--f-mono);font-weight:600;color:var(--pink);margin-right:4px;font-size:.9em}
@@ -429,7 +433,7 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
       </div>
       <p>Free to play with no download, on phones and computers. Bots fill empty seats, up to 14 people fit at a table, and you can open a private table for friends. <a href="/faq">Questions?</a></p>
     </article>
-    <nav class="site-foot" aria-label="Site"><a href="/how-to-play">How to play</a><a href="/topics">Topics</a><a href="/leaderboard">Leaderboard</a><a href="/hall-of-fame">Hall of Fame</a><a href="/guild-pass">Guild Pass</a><a href="/shop">Shop</a><a href="/faq">FAQ</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav>
+    <nav class="site-foot" aria-label="Site"><a href="/how-to-play">How to play</a><a href="/topics">Topics</a><a href="/leaderboard">Leaderboard</a><a href="/hall-of-fame">Hall of Fame</a><a href="/guild-pass">Guild Pass</a><a href="/shop">Shop</a><a href="/faq">FAQ</a><a href="/tips">Tips</a><a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#" data-privacy-choices hidden>Privacy choices</a></nav>
   </section>
 
   <!-- LOBBY -->
@@ -467,7 +471,8 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
       <div id="findOut"></div>
     </div>
     <div class="tables" id="tables"></div>
-    <nav class="site-foot" aria-label="Site" style="margin-top:28px"><a href="/how-to-play">How to play</a><a href="/topics">Topics</a><a href="/leaderboard">Leaderboard</a><a href="/hall-of-fame">Hall of Fame</a><a href="/guild-pass">Guild Pass</a><a href="/faq">FAQ</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav>
+    <div id="adLobby" hidden></div>
+    <nav class="site-foot" aria-label="Site" style="margin-top:28px"><a href="/how-to-play">How to play</a><a href="/topics">Topics</a><a href="/leaderboard">Leaderboard</a><a href="/hall-of-fame">Hall of Fame</a><a href="/guild-pass">Guild Pass</a><a href="/faq">FAQ</a><a href="/tips">Tips</a><a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#" data-privacy-choices hidden>Privacy choices</a></nav>
   </section>
 
   <!-- TABLE -->
@@ -517,6 +522,7 @@ import { PACKS, checkAnswer } from './shared.js';
 import { GIFTS } from './catalog.js';
 import { ACCOUNT, loadMe, saveMe, openSheet, nameHTML, titleHTML, hashIntent, runIntent } from './meta.js';
 import { logoImg } from './guild-logo.js';
+import { placeAd } from './ads.js';
 
 /* ======================= WebGL backdrop ======================= */
 const BG = (() => {
@@ -712,6 +718,7 @@ function enterLobby(){
   BG.target=.1; renderTables();
   if (!lobbyWS || lobbyWS.readyState > 1) connectLobby();
   if (INTENT) { const i = INTENT; INTENT = null; runIntent(i); }
+  placeAd($('#adLobby'), 'lobby');
 }
 function paintMe(){
   const me = ACCOUNT.me;
@@ -868,9 +875,14 @@ function vsHTML(S){
 }
 const smallTiles = acro => `<div class="tiles">${acro.split('').map(L=>`<span class="tile" style="animation:none;width:clamp(34px,6vw,46px);font-size:clamp(17px,3vw,24px);border-radius:10px">${L}</span>`).join('')}</div>`;
 
+// Between games only (waiting room, waiting for players, game over), at clean public tables. Never during a round,
+// never at Adult language tables, never at guild tables. renderStage replaces the slot on the next phase.
+const breakAd = () => T.config && T.config.mode==='clean' && !T.config.guild ? '<div id="adBreak" hidden></div>' : '';
+
 function renderStage(S, prev){
   const body = $('#stageBody');
   const ph = S.phase;
+  queueMicrotask(()=>placeAd($('#adBreak'), 'break'));
   if (ph==='waiting') {
     BG.target=.15;
     const w=S.waiting, host=player(w.host), mine=isMe(w.host);
@@ -882,7 +894,7 @@ function renderStage(S, prev){
       <div><span class="label">At the table</span><div class="seated" id="seated">${seatedHTML(S)}</div></div>
       <div class="compose"><input class="field" id="inviteField" readonly value="${esc(link)}" aria-label="Invite link"><button class="btn" type="button" id="copyInvite">Copy link</button></div>
       ${mine?`<label class="botsopt"><input type="checkbox" id="botsChk" ${w.useBots?'checked':''}> Fill empty seats with bots (up to 5 players)</label>
-      <div class="actions"><button class="btn prime" type="button" id="startBtn">Start game</button></div>`:''}`;
+      <div class="actions"><button class="btn prime" type="button" id="startBtn">Start game</button></div>`:''}${breakAd()}`;
     $('#inviteField').addEventListener('focus', e=>e.target.select());
     $('#copyInvite').addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(link); toast('Invite link copied.'); }catch{ $('#inviteField').select(); toast('Select the link and copy it.'); } });
     if (mine) {
@@ -893,7 +905,7 @@ function renderStage(S, prev){
   }
   if (ph==='idle' || ph==='starting') {
     BG.target=.2;
-    body.innerHTML = `<div class="champ"><span class="label">${ph==='starting'?'New game':'Waiting'}</span><div class="wordmark holo-text" style="font-size:clamp(30px,6vw,52px)">${ph==='starting'?'Get ready.':'Waiting for players.'}</div><div class="muted">First to ${S.target} points. Rounds cycle from 3 to 7 letters.</div></div>`;
+    body.innerHTML = `<div class="champ"><span class="label">${ph==='starting'?'New game':'Waiting'}</span><div class="wordmark holo-text" style="font-size:clamp(30px,6vw,52px)">${ph==='starting'?'Get ready.':'Waiting for players.'}</div><div class="muted">First to ${S.target} points. Rounds cycle from 3 to 7 letters.</div></div>${ph==='idle'?breakAd():''}`;
     if (ph==='starting') SFX.start();
     return;
   }
@@ -988,7 +1000,7 @@ function renderStage(S, prev){
     const c=player(S.champ);
     body.innerHTML = `<div class="champ">${orbHTML(c.hue,'lg')}<span class="label">Champion</span><div class="wordmark holo-text">${isMe(c.id)?'You won.':esc(c.name)}</div>${c.tag||c.title?`<div class="muted">${c.tag?`<span class="gtag">[${esc(c.tag)}]</span>`:''}${c.title?esc(c.title):''}</div>`:''}
       <div class="muted">${S.fo.votes[S.fo.a]}–${S.fo.votes[S.fo.b]} in the face-off. A new game starts when the clock runs out.</div>
-      <div class="actions"><button class="btn prime" type="button" id="againBtn">Start next game now</button><button class="btn" type="button" id="lobbyBtn2">Back to lobby</button></div></div>`;
+      <div class="actions"><button class="btn prime" type="button" id="againBtn">Start next game now</button><button class="btn" type="button" id="lobbyBtn2">Back to lobby</button></div></div>${breakAd()}`;
     $('#againBtn').onclick=()=>sendT({t:'again'});
     $('#lobbyBtn2').onclick=enterLobby;
     if (isMe(c.id)) { SFX.win(); confetti(true); } else SFX.vote();

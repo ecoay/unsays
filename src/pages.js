@@ -1,6 +1,7 @@
 import { GENERAL, TOPICS, PACKS as TOPIC_PACKS, clean } from '../public/shared.js';
 import { PACKS, GUILD_PASS, GIFTS, EMOJI_FREE, DROP, money } from '../public/catalog.js';
 import { logoImg } from '../public/guild-logo.js';
+import { adMeta } from './ads.js';
 import { monthKey, monthLabel, prevMonth, archiveMonth, topPlayers, topGuilds, topGifted, guildBoard, hall, guildActive } from './db.js';
 
 // Server-rendered pages for search engines and answer engines: how to play, topics, FAQ,
@@ -49,6 +50,7 @@ export const FAQ = [
   ['Is unsays family friendly?', 'Tables marked Keep it clean blur common swear words in lines and chat. Tables marked Adult language don\'t. The game is meant for players 13 and older, and Adult tables for players 18 and older.'],
   ['Do I need an account or a download?', 'No download is needed, and it works on phones, tablets and computers. You can play as a guest right away. Signing in with Google or an email link keeps your points, purchases and guild on every device.'],
   ['What is the unsays Guild Pass?', 'The Guild Pass costs $2.99 a month (or $24 a year). It gives your crew its own members-only 14-seat table in the lobby, a guild leaderboard with its own Hall of Fame, a guild tag next to every member\'s name, and no ads for the owner.'],
+  ['Does unsays have ads?', 'Free players see a few ads in the lobby, on some guide pages and between games. There are never ads while you are writing or voting, at Adult language tables, or at guild tables, and the Guild Pass owner sees none at all.'],
   ['How does the unsays leaderboard work?', 'Points from public tables count on the global leaderboard when at least 3 real people played the round. Bots never count. Every board resets on the 1st of the month, and that month\'s top 3 players, top guild and most-gifted line go into the Hall of Fame for good, with a free champion title.'],
   ['What are flair, emoji and gift packs?', 'Flair packs change how your name and wins look: name styles, win animations, vote-reveal effects and titles. Emoji packs add reactions that float over the table. Gifts let you reward a line you loved after the votes are in. They are all cosmetic and never change the score.'],
   ['What is the unsays gift drop?', 'The monthly gift drop costs $2.99 and adds 2 gifts to your account every day for 30 days, the cheapest way to get gifts. Each day\'s gifts arrive when you open the game, and a day you miss isn\'t carried over. Buying another adds 30 more days.'],
@@ -68,9 +70,10 @@ const HOWTO = [
 
 /* ---------- layout ---------- */
 
-const NAV = [['/how-to-play', 'How to play'], ['/topics', 'Topics'], ['/leaderboard', 'Leaderboard'], ['/hall-of-fame', 'Hall of Fame'], ['/guild-pass', 'Guild Pass'], ['/shop', 'Shop'], ['/faq', 'FAQ']];
+const NAV = [['/how-to-play', 'How to play'], ['/tips', 'Tips'], ['/topics', 'Topics'], ['/leaderboard', 'Leaderboard'], ['/hall-of-fame', 'Hall of Fame'], ['/guild-pass', 'Guild Pass'], ['/shop', 'Shop'], ['/faq', 'FAQ']];
 
-function layout(env, { path, title, description, body, schema = [], noindex = false, status = 200, ogType = 'website' }) {
+// ads: true adds one labeled ad slot after the page's content (free visitors only, see public/ads.js).
+function layout(env, { path, title, description, body, schema = [], noindex = false, status = 200, ogType = 'website', ads = false }) {
   const url = site(env) + path;
   const og = site(env) + '/og.png';
   const html = `<!doctype html>
@@ -102,6 +105,8 @@ ${noindex ? '<meta name="robots" content="noindex">' : '<meta name="robots" cont
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="/site.css">
+${adMeta(env)}
+<script type="module" src="/ads.js"></script>
 ${schema.map(ld).join('\n')}
 </head>
 <body>
@@ -113,9 +118,10 @@ ${schema.map(ld).join('\n')}
 </header>
 <main>
 ${body}
+${ads ? '<div data-ad="content" hidden></div>' : ''}
 </main>
 <footer>
-  <nav aria-label="More">${NAV.map(([h, l]) => `<a href="${h}">${l}</a>`).join('')}<a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav>
+  <nav aria-label="More">${NAV.map(([h, l]) => `<a href="${h}">${l}</a>`).join('')}<a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#" data-privacy-choices hidden>Privacy choices</a></nav>
   <p>unsays is a free multiplayer acronym party game in your browser. Things you can't unsay. Contact: <a href="mailto:${esc(env.CONTACT_EMAIL || 'hello@unsays.com')}">${esc(env.CONTACT_EMAIL || 'hello@unsays.com')}</a></p>
 </footer>
 </div>
@@ -148,7 +154,7 @@ const tag = t => t ? `<span class="gtag">[${esc(t)}]</span>` : '';
 
 function howToPlay(env) {
   return layout(env, {
-    path: '/how-to-play', title: 'How to play unsays: rules, scoring and tips',
+    ads: true, path: '/how-to-play', title: 'How to play unsays: rules, scoring and tips',
     description: 'Learn to play unsays in a minute. Turn random letters into a line that fits the topic, vote for the funniest, and score with votes, win and speed bonuses.',
     schema: [
       { '@context': 'https://schema.org', '@type': 'HowTo', name: 'How to play unsays', totalTime: 'PT15M', step: HOWTO.map(([name, text], i) => ({ '@type': 'HowToStep', position: i + 1, name, text })) },
@@ -181,7 +187,7 @@ function howToPlay(env) {
 function topicsIndex(env) {
   const groups = Object.entries(TOPIC_PACKS).filter(([k]) => k !== 'all');
   return layout(env, {
-    path: '/topics', title: 'unsays topics: 15 things you can\'t unsay, plus General',
+    ads: true, path: '/topics', title: 'unsays topics: 15 things you can\'t unsay, plus General',
     description: 'Every unsays round has a topic, from things you can\'t say to your boss or your ex to Disney and sports. See all 16 topics with example lines.',
     schema: [{ '@context': 'https://schema.org', '@type': 'ItemList', name: 'unsays topics', itemListElement: ALL_TOPICS.map((t, i) => ({ '@type': 'ListItem', position: i + 1, name: topicTitle(t), url: `${site(env)}/topics/${topicSlug(t)}` })) },
       crumbs(env, [['unsays', '/'], ['Topics', '/topics']])],
@@ -205,7 +211,7 @@ function topicPage(env, t) {
   const words = t.w ? t.w.split(' ').slice(0, 12) : [];
   const desc = `Play "${title}" in unsays, the free multiplayer acronym game. See example lines, how the topic works, and jump into a table.`;
   return layout(env, {
-    path: `/topics/${topicSlug(t)}`, title: `${title}: unsays topic and example lines`, description: desc,
+    ads: true, path: `/topics/${topicSlug(t)}`, title: `${title}: unsays topic and example lines`, description: desc,
     schema: [crumbs(env, [['unsays', '/'], ['Topics', '/topics'], [title, `/topics/${topicSlug(t)}`]]),
       faqSchema([[`How does the "${title}" topic work in unsays?`, `When "${title}" comes up, everyone gets the same letters and writes a line for it, with each word starting with the next letter. It shows up on ${pack}. The round winner chooses it from three topics or General.`]])],
     body: `<nav class="crumbs" aria-label="Breadcrumb"><a href="/topics">Topics</a> / ${esc(t.subj)}</nav>
@@ -223,12 +229,76 @@ function topicPage(env, t) {
 
 function faqPage(env) {
   return layout(env, {
-    path: '/faq', title: 'unsays FAQ: how it works, pricing, leaderboards and more',
+    ads: true, path: '/faq', title: 'unsays FAQ: how it works, pricing, leaderboards and more',
     description: 'Answers about unsays: how to play, whether it\'s free, how scoring and leaderboards work, how many people can play, and what the Guild Pass includes.',
     schema: [faqSchema(FAQ), crumbs(env, [['unsays', '/'], ['FAQ', '/faq']])],
     body: `<section class="hero"><span class="label">FAQ</span><h1>Questions, <span class="holo">answered</span></h1></section>
       <section>${FAQ.map(([q, a], i) => `<details${i < 3 ? ' open' : ''}><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}</section>
       <section class="cta"><a class="btn prime" href="/">Play free</a><a class="btn" href="/how-to-play">How to play</a></section>`,
+  });
+}
+
+const TIPS = [
+  ['Read the letters before the topic', 'The letters decide what you can say far more than the topic does. Say the letters out loud in your head and grab the first word that fits the awkward ones (Q, X, Z, V) before you worry about the joke.'],
+  ['Build around the hardest letter', 'If the round is B-Q-T-N, the Q is the problem. Pick a Q word first ("quit", "queen", "quietly") and write the rest around it. The easy letters will take care of themselves.'],
+  ['Short words win votes', 'People vote in 15 seconds. "Bonus or I quit" beats a line that needs to be read twice. Use small words for small letters: "a", "I", "in", "on", "or", "the" and "to" all count.'],
+  ['Lock in early, then improve', 'Pressing Enter locks your line in, and you can keep editing until the clock runs out. An early lock-in puts you in line for the +2 speed bonus without stopping you from finding something better.'],
+  ['Finish the sentence', 'A line that reads like something a real person would say gets more votes than a pile of words that only match the letters.'],
+  ['Write for the room, not the topic', 'The topic is a suggestion. If the table has been voting for gross-out jokes all night, the topic is not going to save a clever line. Watch what wins and write for that crowd.'],
+  ['Always vote', 'Skipping the vote costs you every point you scored that round. Even if you hate every line, tap one. Voting for the winner also earns +1 for good taste.'],
+  ['Use the long rounds', 'Rounds go 3, 4, 5, 6 and 7 letters, and a win is worth 1 point per letter. A 7-letter win is worth 7 points plus votes, so the long rounds swing games. They also give you more time to write.'],
+  ['Pick topics you\'re good at', 'Winning a round lets you choose the next topic. Choose one that suits your sense of humor, or pick General when you want the widest range of lines.'],
+  ['Play the face-off differently', 'In the face-off it\'s just you against one other player, and only the rest of the table votes. Go for the line most people will get right away. A safe laugh beats a risky one when there are only two choices.'],
+];
+
+function tipsPage(env) {
+  return layout(env, {
+    ads: true, path: '/tips', title: 'How to win at unsays: 10 tips for acronym games',
+    description: 'Strategy for unsays and other Acrophobia-style acronym games: handle hard letters, write lines people vote for, use the speed bonus, and win the face-off.',
+    schema: [{ '@context': 'https://schema.org', '@type': 'Article', headline: 'How to win at unsays: 10 tips for acronym games', author: { '@type': 'Organization', name: 'unsays' }, publisher: { '@type': 'Organization', name: 'unsays' }, datePublished: '2026-10-28', mainEntityOfPage: site(env) + '/tips' },
+      crumbs(env, [['unsays', '/'], ['Tips', '/tips']])],
+    body: `<section class="hero"><span class="label">Strategy</span><h1>How to win at <span class="holo">unsays</span></h1>
+      <p class="lede"><b>Acronym games reward speed and a line people get instantly.</b> These tips come from watching which lines win at unsays tables, and they work for any Acrophobia-style game.</p>
+      <div class="card ex"><span class="label">Example · Things you can't say to your mother-in-law</span>${tiles('WTYS')}<q>Why's turkey yours, sweetie</q></div></section>
+    <section><h2>10 tips</h2><ol class="steps">${TIPS.map(([n, t]) => `<li><b>${esc(n)}.</b> ${esc(t)}</li>`).join('')}</ol></section>
+    <section><h2>Letters that cause trouble</h2><p>Some letters come up often enough that it pays to have a word ready.</p>
+      <div class="grid">${[['Q', 'quit, queen, quietly, quick, quarter'], ['X', 'X-rays, xylophone, Xbox, ex (as in your ex)'], ['Z', 'zero, zoom, zombie, zip, zany'], ['J', 'just, joking, job, jealous, Jeff'], ['K', 'kids, kiss, kinda, keep, karaoke'], ['V', 'very, vacation, vibes, vote, Vegas']]
+        .map(([L, w]) => `<div class="card">${tiles(L)}<span class="muted">${esc(w)}</span></div>`).join('')}</div></section>
+    <section><h2>What a winning round looks like</h2><p>Say the letters are <b>D-M-L-O</b> and the topic is things you can't say to your boss. "Dentist? Make lunch overtime" fits the letters but nobody will understand it. "Don't micromanage, Linda. Obviously" is longer to read but reads like a real sentence, names a person, and sounds like something you'd regret. The second one gets the votes.</p>
+      <p>Speed still matters. If two lines are about as funny, the one that got its first vote earlier takes the +2 speed bonus, which is why it pays to lock in something decent fast and then improve it.</p></section>
+    <section class="cta"><a class="btn prime" href="/">Try it now, free</a><a class="btn" href="/how-to-play">Rules and scoring</a><a class="btn" href="/topics">All topics</a></section>`,
+  });
+}
+
+function aboutPage(env) {
+  const contact = esc(env.CONTACT_EMAIL || 'hello@unsays.com');
+  return layout(env, {
+    path: '/about', title: 'About unsays', description: 'Who makes unsays, why it exists, and how the free acronym party game pays for itself.',
+    schema: [{ '@context': 'https://schema.org', '@type': 'AboutPage', name: 'About unsays', url: site(env) + '/about' }, crumbs(env, [['unsays', '/'], ['About', '/about']])],
+    body: `<section class="hero"><span class="label">About</span><h1>About <span class="holo">unsays</span></h1>
+      <p class="lede"><b>unsays is a free multiplayer acronym party game that runs in your browser.</b> It's a modern take on Acrophobia, the acronym game people played in the late 1990s, rebuilt for phones and quick games with friends.</p></section>
+    <section><h2>Why we made it</h2><p>Acronym games are one of the simplest party games there is: same letters for everyone, funniest line wins. We wanted one you could open in a browser tab and play in a minute, with no download, no account and no waiting for a full room. Bots fill empty seats so a game can always start, and every round has a topic, from things you can't say to your boss to Disney and sports.</p></section>
+    <section><h2>How it's paid for</h2><p>The game is free and always will be. It's paid for by ads shown to free players in the lobby and between games (never while you're writing or voting), and by optional purchases: the Guild Pass, which gives a group its own table and turns off ads for its owner, and cosmetic flair, emoji and gift packs. Nothing you can buy adds points or changes who wins.</p></section>
+    <section><h2>Keeping it fun</h2><p>Every table is either <b>Keep it clean</b>, which filters strong language from lines and chat, or <b>Adult language</b>, which is for players 18 and older. Players must be 13 or older. Anyone who posts hate, threats or other people's private information can be removed. Read the <a href="/terms">terms</a> and <a href="/privacy">privacy policy</a>.</p></section>
+    <section><h2>Get in touch</h2><p>Questions, bug reports, ideas or a line that should be in the Hall of Fame: email <a href="mailto:${contact}">${contact}</a> or see the <a href="/contact">contact page</a>.</p></section>
+    <section class="cta"><a class="btn prime" href="/">Play free</a><a class="btn" href="/how-to-play">How to play</a></section>`,
+  });
+}
+
+function contactPage(env) {
+  const contact = esc(env.CONTACT_EMAIL || 'hello@unsays.com');
+  return layout(env, {
+    path: '/contact', title: 'Contact unsays', description: 'How to reach the unsays team about bugs, purchases, account deletion, reports and partnerships.',
+    schema: [{ '@context': 'https://schema.org', '@type': 'ContactPage', name: 'Contact unsays', url: site(env) + '/contact' }, crumbs(env, [['unsays', '/'], ['Contact', '/contact']])],
+    body: `<section class="hero"><span class="label">Contact</span><h1>Talk to <span class="holo">us</span></h1>
+      <p class="lede">Email <a href="mailto:${contact}"><b>${contact}</b></a>. A person reads every message, usually within two business days.</p></section>
+    <section><h2>What to include</h2><ul class="list">
+      <li><b>Bugs:</b> what you were doing, the table name, and your device and browser.</li>
+      <li><b>Purchases and the Guild Pass:</b> the email on your receipt and your player name. Refunds follow the <a href="/terms">terms</a>.</li>
+      <li><b>Deleting your account:</b> write from the email on your account, or tell us your player name. See the <a href="/privacy">privacy policy</a>.</li>
+      <li><b>Reporting a player or guild:</b> the name, the table, and roughly when it happened.</li>
+      <li><b>Press, partnerships and advertising:</b> tell us who you are and what you have in mind.</li></ul></section>
+    <section class="cta"><a class="btn prime" href="mailto:${contact}">Email us</a><a class="btn" href="/faq">Read the FAQ</a></section>`,
   });
 }
 
@@ -358,7 +428,7 @@ function legal(env, path) {
   const contact = esc(env.CONTACT_EMAIL || 'hello@unsays.com');
   if (path === '/privacy') return layout(env, {
     path, title: 'Privacy · unsays', description: 'What unsays collects, why, and how to delete it.',
-    body: `<section class="legal"><span class="label">Last updated Oct 27, 2026</span><h1>Privacy</h1>
+    body: `<section class="legal"><span class="label">Last updated Oct 28, 2026</span><h1>Privacy</h1>
       <p>unsays is a browser game. This page says what we keep and why.</p>
       <h2>What we collect</h2><ul class="list">
         <li><b>Your player name and color</b>, which other players see.</li>
@@ -367,8 +437,14 @@ function legal(env, path) {
         <li><b>Game records:</b> points, wins, gifts sent and received, guild membership and what you've bought.</li>
         <li><b>Lines and chat</b> while a game is running. We don't keep chat after the table closes. Lines that receive gifts are kept for the leaderboard and Hall of Fame.</li>
         <li><b>Payments</b> go through Stripe. We never see or store your card number.</li>
-        <li>Our host, Cloudflare, keeps standard request logs for security and debugging.</li></ul>
-      <h2>What we don't do</h2><p>We don't sell your data, and we don't use ad trackers today. If we add ads later, we'll update this page first and say so in the game.</p>
+        <li>Our host, Cloudflare, keeps standard request logs for security and debugging.</li>
+        <li><b>Ad cookies</b> for free players, set by Google. See Advertising below.</li></ul>
+      <h2>Advertising</h2><p>Free players see ads from Google AdSense in the lobby, on some content pages and between games. Guild Pass owners and guild tables don't see ads.</p>
+      <ul class="list"><li>Third-party vendors, including Google, use cookies to serve ads based on your earlier visits to this site and other sites.</li>
+        <li>Google's advertising cookies let it and its partners serve ads to you based on those visits. See <a href="https://policies.google.com/technologies/partner-sites" rel="noopener">how Google uses information from sites that use its services</a>.</li>
+        <li>You can turn off personalized ads in <a href="https://adssettings.google.com" rel="noopener">Google's Ads Settings</a>, or turn off many third-party vendors' cookies at <a href="https://www.aboutads.info/choices/" rel="noopener">aboutads.info</a>.</li>
+        <li>In the European Economic Area, the UK and Switzerland, we ask for your consent before any ad cookies are set, using Google's consent message. You can change your choice any time with the <b>Privacy choices</b> link at the bottom of every page. US visitors can opt out of the sale or sharing of personal information through the same link where state law gives that right.</li></ul>
+      <h2>What we don't do</h2><p>We don't sell your name, email, lines or chat, and we don't share them with advertisers.</p>
       <h2>Deleting your data</h2><p>Email <a href="mailto:${contact}">${contact}</a> from the address on your account, or tell us your player name, and we'll delete your account and records.</p>
       <h2>Children</h2><p>unsays is for players 13 and older. Adult language tables are for players 18 and older.</p></section>`,
   });
@@ -402,6 +478,9 @@ export async function page(path, url, env, DB) {
   const tm = path.match(/^\/topics\/([a-z-]+)$/);
   if (tm) { const t = ALL_TOPICS.find(x => topicSlug(x) === tm[1]); return t ? topicPage(env, t) : notFound(env); }
   if (path === '/faq') return faqPage(env);
+  if (path === '/tips') return tipsPage(env);
+  if (path === '/about') return aboutPage(env);
+  if (path === '/contact') return contactPage(env);
   if (path === '/leaderboard') return leaderboard(env, DB, url);
   if (path === '/hall-of-fame') return hallOfFame(env, DB);
   if (path === '/guild-pass') return guildPass(env);
@@ -422,9 +501,9 @@ export function robots(env, indexable) {
   return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /auth/\nDisallow: /ws/\nDisallow: /join/\n\nSitemap: ${site(env)}/sitemap.xml\n`;
 }
 
-const STATIC_PATHS = [['/', 'daily', '1.0'], ['/how-to-play', 'monthly', '0.9'], ['/topics', 'monthly', '0.8'], ['/faq', 'monthly', '0.8'],
+const STATIC_PATHS = [['/', 'daily', '1.0'], ['/how-to-play', 'monthly', '0.9'], ['/tips', 'monthly', '0.8'], ['/topics', 'monthly', '0.8'], ['/faq', 'monthly', '0.8'],
   ['/leaderboard', 'hourly', '0.7'], ['/hall-of-fame', 'monthly', '0.6'], ['/guild-pass', 'monthly', '0.7'], ['/shop', 'monthly', '0.6'],
-  ['/privacy', 'yearly', '0.2'], ['/terms', 'yearly', '0.2']];
+  ['/about', 'yearly', '0.4'], ['/contact', 'yearly', '0.3'], ['/privacy', 'yearly', '0.2'], ['/terms', 'yearly', '0.2']];
 
 export async function sitemap(env, DB) {
   const today = new Date().toISOString().slice(0, 10);
@@ -456,6 +535,7 @@ Key facts:
 
 ## Pages
 - [How to play](${s}/how-to-play): rules, scoring, timing and tips
+- [Tips](${s}/tips): strategy for writing lines that win votes
 - [Topics](${s}/topics): all 16 topics with example lines
 - [FAQ](${s}/faq): common questions with short answers
 - [Leaderboard](${s}/leaderboard): this month's top players and guilds
@@ -465,6 +545,8 @@ Key facts:
 
 ## Optional
 - [Full text for language models](${s}/llms-full.txt)
+- [About](${s}/about)
+- [Contact](${s}/contact)
 - [Privacy](${s}/privacy)
 - [Terms](${s}/terms)
 `;

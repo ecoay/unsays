@@ -56,3 +56,19 @@ test('bots favor lines that make sense', async () => {
   assert.ok(avg('My boss fired me', 'boss') > avg('Jealous score dont cat', 'boss'));
   assert.ok(avg('Jkdf Sdfg Qwrt') < .3, 'keyboard mash');
 });
+
+test('ads stay off until a publisher ID is set, and only run on the real domain', async () => {
+  const { adsConfig, adsTxt, adMeta } = await import('../src/ads.js');
+  assert.equal(adsTxt({}), null);
+  assert.equal(adMeta({ ADSENSE_CLIENT: 'ca-pub-XXXX' }), '');
+  const env = { ADSENSE_CLIENT: 'ca-pub-1234567890123456', ADSENSE_SLOT_LOBBY: '1111111111', ADSENSE_SLOT_BREAK: 'nope' };
+  assert.equal(adsTxt(env), 'google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0\n');
+  assert.deepEqual(adsConfig(env, 'unsays.com', 'unsays.com').slots, { lobby: '1111111111', break: null, content: null });
+  assert.equal(adsConfig(env, 'unsays.bruce-f87.workers.dev', 'unsays.com').client, null);
+});
+
+test('the sitemap lists the about, contact and tips pages on the real domain', async () => {
+  const xml = await sitemap({ SITE_URL: 'https://unsays.com' }, null);
+  for (const p of ['/tips', '/about', '/contact', '/privacy']) assert.match(xml, new RegExp(`<loc>https://unsays.com${p}</loc>`));
+  assert.doesNotMatch(xml, /workers\.dev/);
+});

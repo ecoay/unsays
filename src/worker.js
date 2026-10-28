@@ -1,9 +1,10 @@
 import { Table } from './table.js';
 import { Lobby } from './lobby.js';
-import { db, profile, getPlayer, setEquip, exchange, checkIn, newId, now, monthKey, prevMonth, archiveMonth, topPlayers, topGuilds, topGifted } from './db.js';
+import { db, profile, getPlayer, isAdFree, setEquip, exchange, checkIn, newId, now, monthKey, prevMonth, archiveMonth, topPlayers, topGuilds, topGifted } from './db.js';
 import { sessionPlayer, ensurePlayer, signOut, providers, googleStart, googleCallback, emailStart, emailVerify } from './auth.js';
 import { stripeReady, checkout, portal, verifySignature, handleEvent } from './stripe.js';
 import { page, robots, sitemap, llms, llmsFull, canonicalHost } from './pages.js';
+import { adsConfig, adsTxt, adMeta } from './ads.js';
 import { ICONS, DEFAULT_ICON } from '../public/guild-icons.js';
 import { GUILD_COLORS, DEFAULT_COLOR, logoSVG } from '../public/guild-logo.js';
 
@@ -175,6 +176,12 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     const path = url.pathname;
+    // Once unsays.com serves this Worker, set CANONICAL_REDIRECT to "on" to send the production workers.dev
+    // address there for good. Preview URLs (<version>-unsays.*) and the game's sockets and APIs are left alone.
+    if (env.CANONICAL_REDIRECT === 'on' && url.hostname.startsWith('unsays.') && url.hostname.endsWith('.workers.dev')
+      && (req.method === 'GET' || req.method === 'HEAD') && !/^\/(api|ws|auth)\//.test(path)) {
+      return Response.redirect(`https://${canonicalHost(env)}${path}${url.search}`, 301);
+    }
     const DB = await Promise.resolve(db(env)).catch(e => { console.error('db', e); return null; });
 
     const logo = path.match(LOGO_PATH);
@@ -187,6 +194,12 @@ export default {
     if (m) {
       if (req.headers.get('Upgrade') !== 'websocket') return new Response('Expected WebSocket', { status: 426 });
       return env.TABLE.get(env.TABLE.idFromName(m[1])).fetch(await withPlayer(req, DB));
+    }
+    // Ad settings for this visitor. Works without the database (previews), where it just reports ads off.
+    if (path === '/api/ads') {
+      const cfg = adsConfig(env, url.hostname, canonicalHost(env));
+      const pid = cfg.client && DB ? await sessionPlayer(DB, req).catch(() => null) : null;
+      return json({ ...cfg, adFree: !!(pid && await isAdFree(DB, pid).catch(() => false)) });
     }
     if (path.startsWith('/api/')) {
       if (!DB) return json({ error: 'Accounts are offline.' }, 503);
@@ -204,11 +217,14 @@ export default {
     if (path === '/sitemap.xml') return text(await sitemap(env, DB), 'application/xml');
     if (path === '/llms.txt') return text(llms(env), 'text/plain');
     if (path === '/llms-full.txt') return text(llmsFull(env), 'text/plain');
+    if (path === '/ads.txt') { const t = adsTxt(env); return t ? text(t, 'text/plain') : new Response('Not found', { status: 404 }); }
 
     let res = await page(path, url, env, DB);
     if (!res) {
       res = await env.ASSETS.fetch(req);
       if (res.status === 404) res = await page('/404', url, env, DB);
+      // The game page is a static file; the Worker runs first on "/" only to add AdSense's site verification tag.
+      else if (path === '/' && adMeta(env)) res = new HTMLRewriter().on('head', { element: e => e.append(adMeta(env), { html: true }) }).transform(res);
     }
     if (indexable) return res;
     const out = new Response(res.body, res);

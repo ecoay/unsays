@@ -11,8 +11,9 @@ It runs entirely on Cloudflare:
 - **D1 database** (`src/db.js`): players, sessions, purchases, guilds, monthly scores, gifts and the Hall of Fame. The Worker creates the tables on first use.
 - **Accounts** (`src/auth.js`): every player gets a guest account held by an HttpOnly cookie. Google or an email link (sent with Resend) attaches an identity so the account follows them to other devices. The Worker passes the signed-in player id to the Table and Lobby, so nobody can claim another player's account.
 - **Store** (`src/stripe.js`, `public/catalog.js`): Stripe Checkout with prices sent inline from the catalog, and a signed webhook that unlocks packs, adds gifts and switches Guild Passes on and off.
-- **Content pages** (`src/pages.js`, `public/site.css`): how to play, 16 topic pages, FAQ, leaderboards, Hall of Fame, Guild Pass, shop, privacy and terms, plus `robots.txt`, `sitemap.xml`, `llms.txt` and `llms-full.txt`. All carry canonical URLs, Open Graph tags and JSON-LD. Hosts other than `SITE_URL` (workers.dev, previews) are kept out of search.
+- **Content pages** (`src/pages.js`, `public/site.css`): how to play, tips, 16 topic pages, FAQ, leaderboards, Hall of Fame, Guild Pass, shop, about, contact, privacy and terms, plus `robots.txt`, `sitemap.xml`, `llms.txt` and `llms-full.txt`. All carry canonical URLs, Open Graph tags and JSON-LD. Hosts other than `SITE_URL` (workers.dev, previews) are kept out of search.
 - **Client extras** (`public/meta.js`): the profile, locker, store and guild sheet in the lobby.
+- **Ads** (`src/ads.js`, `public/ads.js`): AdSense units for free players in the lobby, on guide pages (how to play, tips, topics, FAQ) and between games at clean public tables (waiting room and game over). Never during writing or voting, at Adult language tables or guild tables, or for Guild Pass owners. `/ads.txt` and the AdSense verification tag are generated from `ADSENSE_CLIENT`. Consent in the EEA, UK and Switzerland comes from Google's own message (AdSense, Privacy & messaging); the footer's Privacy choices link reopens it.
 
 ## Money and leaderboards
 
@@ -33,7 +34,15 @@ Each feature switches on when its keys exist, so the game keeps working with non
 
 When sign-in is set up, buying needs a signed-in account so purchases follow the player. Without any sign-in method, purchases attach to the browser's guest account.
 
-`SITE_URL`, `EMAIL_FROM` and `CONTACT_EMAIL` are plain variables in `wrangler.jsonc`. The D1 database `unsays` is bound by its `database_id` in `wrangler.jsonc`.
+`SITE_URL`, `EMAIL_FROM` and `CONTACT_EMAIL` are plain variables in `wrangler.jsonc`.
+
+### Domain, search and AdSense
+
+1. Cloudflare: add the `unsays.com` zone, switch the registrar's nameservers to Cloudflare, then on the unsays Worker add custom domains `unsays.com` and `www.unsays.com` (www redirects to the bare domain).
+2. When `https://unsays.com` loads the game, set `CANONICAL_REDIRECT` to `"on"` in `wrangler.jsonc` so the workers.dev address 301s to it.
+3. Google Search Console: add a Domain property for `unsays.com` (verify with the DNS TXT record in Cloudflare), then submit `https://unsays.com/sitemap.xml`.
+4. Bing Webmaster Tools: import the site from Search Console, or add it and submit the same sitemap. IndexNow is on by default in Cloudflare (Caching, Crawler Hints).
+5. AdSense: add the site `unsays.com`. Put the publisher ID (`ca-pub-...`) in `ADSENSE_CLIENT`, deploy, then pick "ads.txt snippet" or "meta tag" to verify. In Privacy & messaging, publish a European regulations message (and the US states message). After approval, create three display ad units (lobby, between games, content) and put their IDs in the `ADSENSE_SLOT_*` variables. Leave Auto ads off: it would place ads during rounds. The D1 database `unsays` is bound by its `database_id` in `wrangler.jsonc`.
 
 ## Rules (from the design doc)
 
