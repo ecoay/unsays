@@ -109,6 +109,10 @@ button{cursor:pointer}
 .nf-neon{color:#fff;font-weight:700;text-shadow:0 0 4px #fff,0 0 10px var(--pink),0 0 20px var(--pink);animation:flick 3s infinite}
 .nf-glitch{font-weight:700;text-shadow:2px 0 var(--cyan),-2px 0 var(--pink);animation:glitch 1.6s steps(2) infinite}
 .nf-fire{background:linear-gradient(0deg,#ff3d00,#ff9100 45%,#ffe57f);background-size:100% 200%;-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:700;animation:fire 1.2s ease-in-out infinite alternate}
+.nf-wrapped{background:repeating-linear-gradient(135deg,#ff4f6d 0 6px,#fff4f6 6px 9px,#ffd36b 9px 12px,#fff4f6 12px 15px);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800;filter:drop-shadow(0 0 5px rgba(255,79,109,.5));animation:wrap 4s linear infinite}
+.nf-wrapped::after{content:" 🎀";-webkit-text-fill-color:initial;color:initial}
+@keyframes wrap{to{background-position:-60px 0}}
+@media (prefers-reduced-motion:reduce){.nf-wrapped{animation:none}}
 .nf-frost{background:linear-gradient(100deg,#e0f7ff,#8fdcff 50%,#fff);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:700;filter:drop-shadow(0 0 6px rgba(143,220,255,.6))}
 @keyframes flick{0%,92%,100%{opacity:1}94%{opacity:.4}96%{opacity:.9}}
 @keyframes glitch{0%{text-shadow:2px 0 var(--cyan),-2px 0 var(--pink)}50%{text-shadow:-2px 1px var(--cyan),2px -1px var(--pink)}}
@@ -149,6 +153,9 @@ button{cursor:pointer}
 .small{font-size:13px}
 .skus{display:grid;gap:8px}
 .sku{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.xtitles{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,170px),1fr));gap:8px}
+.xt{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-width:0}
+.xt b{font-size:14px;min-width:0;overflow-wrap:anywhere}
 .sku.hot{border-color:rgba(255,79,210,.45);background:rgba(255,79,210,.06)}
 .tag.good{background:rgba(93,255,177,.14);color:var(--good)}
 .notice{border:1px solid rgba(255,211,107,.35);color:var(--gold);border-radius:12px;padding:8px 12px;font-size:13px}

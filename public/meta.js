@@ -1,5 +1,5 @@
 // Accounts, the store, the flair locker and guilds. One sheet with three tabs, opened from the lobby.
-import { PACKS, GUILD_PASS, FLAIR, GIFTS, money, titleText } from './catalog.js';
+import { PACKS, GUILD_PASS, FLAIR, GIFTS, DROP, money, titleText } from './catalog.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -10,7 +10,10 @@ export const ACCOUNT = { me: null, providers: { google: false, email: false }, s
 async function api(path, body, method = body ? 'POST' : 'GET') {
   const r = await fetch(path, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin' });
   let j = {}; try { j = await r.json(); } catch {}
-  if (j.me !== undefined) { ACCOUNT.me = j.me; ACCOUNT.providers = j.providers || ACCOUNT.providers; ACCOUNT.store = !!j.store; announce(); }
+  if (j.me !== undefined) {
+    ACCOUNT.me = j.me; ACCOUNT.providers = j.providers || ACCOUNT.providers; ACCOUNT.store = !!j.store; announce();
+    if (j.me?.drop?.dropped) toast(`Gift drop: +${j.me.drop.dropped} gifts today.`);
+  }
   if (!r.ok) throw Object.assign(new Error(j.error || 'Something went wrong.'), { data: j });
   return j;
 }
@@ -95,7 +98,9 @@ function profileHTML(me) {
     <h3>Locker</h3>
     <div class="row2">${select('name', me, 'Name style')}${select('title', me, 'Title')}</div>
     <div class="row2">${select('win', me, 'Win animation')}${select('reveal', me, 'Vote reveal')}</div>
-    <p class="muted small">You have <b>${me.gifts}</b> gift${me.gifts === 1 ? '' : 's'} to send. ${GIFTS.gift.icon} costs 1 and ${GIFTS.crown.icon} costs ${GIFTS.crown.cost}.</p>
+    <p class="muted small">You have <b>${me.gifts}</b> gift${me.gifts === 1 ? '' : 's'} to send. ${GIFTS.gift.icon} costs 1 and ${GIFTS.crown.icon} costs ${GIFTS.crown.cost}.
+      ${me.drop ? `Your gift drop adds ${me.drop.perDay} a day until ${new Date(me.drop.until).toLocaleDateString()}.` : ''}
+      You have <b>${me.earned}</b> received gift${me.earned === 1 ? '' : 's'} to spend in the <a href="#store" data-goto="store">Gift Exchange</a>.</p>
     ${me.signedIn ? '<div class="actions"><button class="btn small ghost" type="button" id="signOut">Sign out</button></div>' : signInHTML()}`;
 }
 
@@ -104,15 +109,25 @@ function profileHTML(me) {
 function storeHTML(me) {
   const owned = new Set(me.owned);
   const closed = !ACCOUNT.store;
-  const card = p => {
-    const have = p.kind !== 'gifts' && (owned.has(p.id) || (p.bundle && p.bundle.every(b => owned.has(b))) || PACKS.some(x => x.bundle && owned.has(x.id) && x.bundle.includes(p.id)));
-    return `<div class="sku"><div><b>${esc(p.name)}</b>${p.emoji ? ` <span>${p.emoji.join(' ')}</span>` : ''}<div class="muted small">${esc(p.blurb)}</div></div>
-      ${have ? '<span class="tag good">Owned</span>' : `<button class="btn small ${closed ? '' : 'prime'}" type="button" data-buy="${p.id}" ${closed ? 'disabled' : ''}>${money(p.price)}</button>`}</div>`;
-  };
-  const group = (kind, title) => `<h3>${title}</h3><div class="skus">${PACKS.filter(p => p.kind === kind).map(card).join('')}</div>`;
+  const has = p => owned.has(p.id) || (p.bundle && p.bundle.every(b => owned.has(b))) || PACKS.some(x => x.bundle && owned.has(x.id) && x.bundle.includes(p.id));
+  const info = p => `<div><b>${esc(p.name)}</b>${p.emoji ? ` <span>${p.emoji.join(' ')}</span>` : ''}<div class="muted small">${esc(p.blurb)}</div></div>`;
+  const card = p => `<div class="sku${p.kind === 'drop' ? ' hot' : ''}">${info(p)}
+      ${p.kind !== 'gifts' && p.kind !== 'drop' && has(p) ? '<span class="tag good">Owned</span>' : `<button class="btn small ${closed ? '' : 'prime'}" type="button" data-buy="${p.id}" ${closed ? 'disabled' : ''}>${money(p.price)}</button>`}</div>`;
+  const swap = p => `<div class="sku">${info(p)}${xbtn(p)}</div>`;
+  const group = (kinds, title) => `<h3>${title}</h3><div class="skus">${PACKS.filter(p => kinds.includes(p.kind)).map(card).join('')}</div>`;
+  const xbtn = p => has(p) ? '<span class="tag good">Owned</span>' : `<button class="btn small${me.earned >= p.xcost ? ' prime' : ''}" type="button" data-swap="${p.id}" ${me.earned >= p.xcost ? '' : 'disabled'}>${GIFTS.gift.icon} ${p.xcost}</button>`;
+  const xtitles = PACKS.filter(p => p.kind === 'exchange' && p.grants?.title);
   return `${closed ? '<p class="notice">The store opens soon. Everything here is coming at launch.</p>' : ''}
     <div class="sku hot"><div><b>Guild Pass</b><div class="muted small">Your crew's own 14-seat table, guild leaderboard and tag. ${money(GUILD_PASS.monthly.price)} a month.</div></div><button class="btn small" type="button" data-goto="guild">See guilds</button></div>
-    ${group('flair', 'Flair')}${group('emoji', 'Emoji')}${group('gifts', 'Gifts')}
+    ${group(['flair'], 'Flair')}${group(['emoji'], 'Emoji')}${group(['drop', 'gifts'], 'Gifts')}
+    ${me.drop ? `<p class="muted small">Your gift drop runs until ${new Date(me.drop.until).toLocaleDateString()}. Buying another adds ${DROP.days} days.</p>` : ''}
+    <h3>Gift Exchange</h3>
+    <p class="muted small">When people gift your lines, those gifts land here. You have <b>${me.earned}</b> to spend. Only gifts you received count, never ones you bought.</p>
+    <span class="label">Exchange only</span>
+    <div class="skus">${PACKS.filter(p => p.kind === 'exchange' && !p.grants?.title).map(swap).join('')}</div>
+    <div class="xtitles">${xtitles.map(p => `<div class="xt"><b>${esc(p.name)}</b>${xbtn(p)}</div>`).join('')}</div>
+    <span class="label">Trade for packs</span>
+    <div class="skus">${PACKS.filter(p => p.xcost && p.kind !== 'exchange').map(swap).join('')}</div>
     <p class="muted small">Nothing in the store adds points or votes. Payments are handled by Stripe.</p>`;
 }
 
@@ -174,6 +189,10 @@ function wire(body, me) {
     try { const j = await api('/api/checkout', { item: b.dataset.buy }); location.href = j.url; }
     finally { b.disabled = false; }
   }));
+  body.querySelectorAll('[data-swap]').forEach(b => b.onclick = () => act(async () => {
+    b.disabled = true;
+    await api('/api/exchange', { item: b.dataset.swap });
+  }, 'Unlocked. Find it in your locker.'));
   body.querySelectorAll('[data-remove]').forEach(b => b.onclick = () => act(() => api('/api/guild/remove', { player: b.dataset.remove }), 'Removed.'));
   const on = (id, fn) => { const el = body.querySelector('#' + id); if (el) el.onclick = fn; };
   on('signOut', () => act(async () => { await api('/api/auth/signout', {}); ACCOUNT.me = null; await saveMe(localName(), localHue()); }, 'Signed out.'));

@@ -1,4 +1,4 @@
-import { unlocked, titleText, FLAIR } from '../public/catalog.js';
+import { unlocked, titleText, FLAIR, DROP, DAY, dayKey, packById } from '../public/catalog.js';
 
 // D1 holds players, sessions, purchases, guilds, monthly scores, gifts and the Hall of Fame.
 // The schema is applied on first use, so a fresh database needs no migration step.
@@ -6,7 +6,8 @@ import { unlocked, titleText, FLAIR } from '../public/catalog.js';
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS players (id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT 'guest', hue INTEGER NOT NULL DEFAULT 0,
     email TEXT UNIQUE, google_sub TEXT UNIQUE, stripe_customer TEXT, gifts INTEGER NOT NULL DEFAULT 0, equip TEXT NOT NULL DEFAULT '{}',
-    guild_id TEXT, created_at INTEGER NOT NULL, seen_at INTEGER NOT NULL)`,
+    guild_id TEXT, created_at INTEGER NOT NULL, seen_at INTEGER NOT NULL, earned INTEGER NOT NULL DEFAULT 0,
+    drop_until INTEGER NOT NULL DEFAULT 0, drop_day TEXT)`,
   `CREATE INDEX IF NOT EXISTS players_guild ON players(guild_id)`,
   `CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, player_id TEXT NOT NULL, created_at INTEGER NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS sessions_player ON sessions(player_id)`,
@@ -29,10 +30,22 @@ const SCHEMA = [
     tag TEXT, value INTEGER NOT NULL, line TEXT, PRIMARY KEY (month, board, rank))`,
 ];
 
+// Columns added after launch. Each runs on its own and "duplicate column" means it's already there.
+const COLUMNS = [
+  'ALTER TABLE players ADD COLUMN earned INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE players ADD COLUMN drop_until INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE players ADD COLUMN drop_day TEXT',
+];
+
+export async function migrate(DB) {
+  await DB.batch(SCHEMA.map(s => DB.prepare(s)));
+  for (const c of COLUMNS) await DB.prepare(c).run().catch(e => { if (!/duplicate column/i.test(String(e))) throw e; });
+}
+
 let ready = null;
 export function db(env) {
   if (!env.DB) return null;
-  if (!ready) ready = env.DB.batch(SCHEMA.map(s => env.DB.prepare(s))).catch(e => { ready = null; throw e; });
+  if (!ready) ready = migrate(env.DB).catch(e => { ready = null; throw e; });
   return ready.then(() => env.DB);
 }
 
@@ -60,6 +73,7 @@ export function guildActive(g) { return !!g && g.pass_until > now(); }
 
 // The view a Table needs to dress a player: guild tag, equipped flair and usable emoji.
 export async function tableProfile(DB, id) {
+  await claimDrop(DB, id);
   const [p, owned, titles] = await Promise.all([
     getPlayer(DB, id),
     DB.prepare('SELECT item FROM owned WHERE player_id = ?').bind(id).all(),
@@ -79,6 +93,7 @@ export async function tableProfile(DB, id) {
 }
 
 export async function profile(DB, id) {
+  const dropped = await claimDrop(DB, id);
   const p = await getPlayer(DB, id);
   if (!p) return null;
   const m = monthKey();
@@ -107,6 +122,7 @@ export async function profile(DB, id) {
     owned: ownedIds, earnedTitles: earned, equip: eq,
     unlocked: { name: [...u.name], win: [...u.win], reveal: [...u.reveal], title: [...u.title], emoji: [...u.emoji] },
     month: m, score: score || { points: 0, round_wins: 0, game_wins: 0 }, giftsReceived: received.n,
+    earned: p.earned, drop: p.drop_until > now() ? { until: p.drop_until, perDay: DROP.perDay, claimedToday: p.drop_day === dayKey(), dropped } : null,
     guild, adFree: !!(g && g.owner_id === id && guildActive(g)),
   };
 }
@@ -133,7 +149,8 @@ export async function mergePlayers(DB, fromId, intoId) {
       ON CONFLICT (month, player_id) DO UPDATE SET points = points + excluded.points, round_wins = round_wins + excluded.round_wins, game_wins = game_wins + excluded.game_wins`).bind(intoId, fromId),
     DB.prepare(`INSERT INTO guild_scores (month, guild_id, player_id, points, round_wins, game_wins) SELECT month, guild_id, ?, points, round_wins, game_wins FROM guild_scores WHERE player_id = ?
       ON CONFLICT (month, guild_id, player_id) DO UPDATE SET points = points + excluded.points, round_wins = round_wins + excluded.round_wins, game_wins = game_wins + excluded.game_wins`).bind(intoId, fromId),
-    DB.prepare('UPDATE players SET gifts = gifts + ?, guild_id = COALESCE(guild_id, ?) WHERE id = ?').bind(from.gifts, from.guild_id, intoId),
+    DB.prepare(`UPDATE players SET gifts = gifts + ?, earned = earned + ?, drop_until = MAX(drop_until, ?), guild_id = COALESCE(guild_id, ?) WHERE id = ?`)
+      .bind(from.gifts, from.earned || 0, from.drop_until || 0, from.guild_id, intoId),
     DB.prepare('UPDATE guilds SET owner_id = ? WHERE owner_id = ? AND NOT EXISTS (SELECT 1 FROM guilds WHERE owner_id = ?)').bind(intoId, fromId, intoId),
     DB.prepare('UPDATE gift_events SET to_id = ? WHERE to_id = ?').bind(intoId, fromId),
     DB.prepare('UPDATE gift_events SET from_id = ? WHERE from_id = ?').bind(intoId, fromId),
@@ -169,12 +186,43 @@ export async function recordGameWin(DB, id, guildId) {
 }
 
 // Spend gifts on a line. Returns false when the sender can't afford it.
+// The recipient banks the gifts as "earned", which only the Gift Exchange accepts.
 export async function sendGift(DB, { from, to, kind, cost, line, acro, table }) {
   const r = await DB.prepare('UPDATE players SET gifts = gifts - ? WHERE id = ? AND gifts >= ?').bind(cost, from, cost).run();
   if (!r.meta.changes) return false;
-  await DB.prepare('INSERT INTO gift_events (month, from_id, to_id, value, kind, line, acro, table_id, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    .bind(monthKey(), from, to, cost, kind, line.slice(0, 160), acro, table, now()).run();
+  await DB.batch([
+    DB.prepare('INSERT INTO gift_events (month, from_id, to_id, value, kind, line, acro, table_id, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(monthKey(), from, to, cost, kind, line.slice(0, 160), acro, table, now()),
+    DB.prepare('UPDATE players SET earned = earned + ? WHERE id = ?').bind(cost, to),
+  ]);
   return true;
+}
+
+/* ---------- gift drop + exchange ---------- */
+
+// Hand out today's drop gifts once per UTC day while the drop is running. Returns how many were added.
+export async function claimDrop(DB, id, t = now()) {
+  const day = dayKey(t);
+  const r = await DB.prepare('UPDATE players SET gifts = gifts + ?, drop_day = ? WHERE id = ? AND drop_until > ? AND (drop_day IS NULL OR drop_day <> ?)')
+    .bind(DROP.perDay, day, id, t, day).run();
+  return r.meta.changes ? DROP.perDay : 0;
+}
+
+// A bought drop runs 30 days from now, or 30 days past the end of one still running.
+export async function startDrop(DB, id, t = now()) {
+  await DB.prepare('UPDATE players SET drop_until = MAX(drop_until, ?) + ? WHERE id = ?').bind(t, DROP.days * DAY, id).run();
+}
+
+// Trade received gifts for a pack. Returns an error message, or null when it worked.
+export async function exchange(DB, id, item) {
+  const pack = packById(item);
+  if (!pack?.xcost) return 'That isn\'t in the Gift Exchange.';
+  if (await DB.prepare('SELECT 1 FROM owned WHERE player_id = ? AND item = ?').bind(id, item).first()) return 'You already have that.';
+  const r = await DB.prepare('UPDATE players SET earned = earned - ? WHERE id = ? AND earned >= ?').bind(pack.xcost, id, pack.xcost).run();
+  if (!r.meta.changes) return `You need ${pack.xcost} received gifts for that.`;
+  const ins = await DB.prepare('INSERT OR IGNORE INTO owned (player_id, item, at) VALUES (?, ?, ?)').bind(id, item, now()).run();
+  if (!ins.meta.changes) await DB.prepare('UPDATE players SET earned = earned + ? WHERE id = ?').bind(pack.xcost, id).run();
+  return null;
 }
 
 /* ---------- boards ---------- */

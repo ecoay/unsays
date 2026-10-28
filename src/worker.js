@@ -1,6 +1,6 @@
 import { Table } from './table.js';
 import { Lobby } from './lobby.js';
-import { db, profile, getPlayer, setEquip, newId, now, monthKey, prevMonth, archiveMonth, topPlayers, topGuilds, topGifted } from './db.js';
+import { db, profile, getPlayer, setEquip, exchange, newId, now, monthKey, prevMonth, archiveMonth, topPlayers, topGuilds, topGifted } from './db.js';
 import { sessionPlayer, ensurePlayer, signOut, providers, googleStart, googleCallback, emailStart, emailVerify } from './auth.js';
 import { stripeReady, checkout, portal, verifySignature, handleEvent } from './stripe.js';
 import { page, robots, sitemap, llms, llmsFull, canonicalHost } from './pages.js';
@@ -68,6 +68,10 @@ async function api(req, env, DB, url) {
     const name = cleanText(b.name, 18);
     if (name) await DB.prepare('UPDATE players SET name = ?, hue = ?, seen_at = ? WHERE id = ?').bind(name, Math.abs(Number(b.hue) | 0) % 360, now(), pid).run();
     return reply(await me());
+  }
+  if (path === '/api/exchange' && method === 'POST') {
+    const err = await exchange(DB, pid, String((await readJSON(req)).item || ''));
+    return reply(err ? { error: err } : await me(), err ? 400 : 200);
   }
   if (path === '/api/me/equip' && method === 'POST') { await setEquip(DB, pid, await readJSON(req)); return reply(await me()); }
   if (path === '/api/auth/signout' && method === 'POST') return json({ ok: true }, 200, await signOut(DB, req));
