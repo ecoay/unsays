@@ -72,6 +72,8 @@ details p{margin-top:8px;color:var(--ink-dim)}
 .row .who small{color:var(--ink-dim);margin-left:6px}
 .row .pts{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .gtag{font-family:var(--f-mono);font-weight:600;color:var(--pink);margin-right:4px}
+.glogo{display:inline-block;vertical-align:-4px;margin-right:6px;border-radius:50%}
+h1 .glogo{vertical-align:-8px;margin-right:4px}
 .orb{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:-1px;background:radial-gradient(circle at 30% 30%,#fff,hsl(var(--h) 90% 65%) 45%,hsl(var(--h) 80% 30%))}
 .empty{padding:28px 16px;text-align:center;color:var(--ink-dim)}
 .price{font-family:var(--f-display);font-weight:800;font-size:30px;line-height:1}

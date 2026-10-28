@@ -20,7 +20,7 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS scores_rank ON scores(month, points DESC)`,
   `CREATE TABLE IF NOT EXISTS guilds (id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE, name TEXT NOT NULL, tag TEXT NOT NULL UNIQUE, owner_id TEXT NOT NULL UNIQUE,
     invite TEXT NOT NULL UNIQUE, speed TEXT NOT NULL DEFAULT 'turbo', mode TEXT NOT NULL DEFAULT 'adult', pass_until INTEGER NOT NULL DEFAULT 0,
-    sub_id TEXT, sub_status TEXT, created_at INTEGER NOT NULL)`,
+    sub_id TEXT, sub_status TEXT, created_at INTEGER NOT NULL, icon TEXT, color TEXT)`,
   `CREATE TABLE IF NOT EXISTS guild_scores (month TEXT NOT NULL, guild_id TEXT NOT NULL, player_id TEXT NOT NULL, points INTEGER NOT NULL DEFAULT 0,
     round_wins INTEGER NOT NULL DEFAULT 0, game_wins INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (month, guild_id, player_id))`,
   `CREATE TABLE IF NOT EXISTS gift_events (id INTEGER PRIMARY KEY AUTOINCREMENT, month TEXT NOT NULL, from_id TEXT NOT NULL, to_id TEXT NOT NULL,
@@ -35,6 +35,8 @@ const COLUMNS = [
   'ALTER TABLE players ADD COLUMN earned INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE players ADD COLUMN drop_until INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE players ADD COLUMN drop_day TEXT',
+  'ALTER TABLE guilds ADD COLUMN icon TEXT',
+  'ALTER TABLE guilds ADD COLUMN color TEXT',
 ];
 
 export async function migrate(DB) {
@@ -109,7 +111,7 @@ export async function profile(DB, id) {
   const u = unlocked(ownedIds, earned);
   let guild = null;
   if (g) {
-    guild = { id: g.id, slug: g.slug, name: g.name, tag: g.tag, owner: g.owner_id === id, active: guildActive(g), passUntil: g.pass_until,
+    guild = { id: g.id, slug: g.slug, name: g.name, tag: g.tag, icon: g.icon, color: g.color, owner: g.owner_id === id, active: guildActive(g), passUntil: g.pass_until,
       subscribed: !!g.sub_id && g.sub_status !== 'canceled', speed: g.speed, mode: g.mode };
     if (guild.owner) {
       guild.invite = g.invite;
@@ -236,7 +238,7 @@ export async function topPlayers(DB, month, limit = 50) {
 
 // Guilds rank by their current members' points in public games.
 export async function topGuilds(DB, month, limit = 50) {
-  return (await DB.prepare(`SELECT g.id, g.slug, g.name, g.tag, COUNT(DISTINCT p.id) AS members, COALESCE(SUM(s.points), 0) AS points
+  return (await DB.prepare(`SELECT g.id, g.slug, g.name, g.tag, g.icon, g.color, COUNT(DISTINCT p.id) AS members, COALESCE(SUM(s.points), 0) AS points
     FROM guilds g JOIN players p ON p.guild_id = g.id LEFT JOIN scores s ON s.player_id = p.id AND s.month = ?
     WHERE g.pass_until > ? GROUP BY g.id HAVING points > 0 ORDER BY points DESC LIMIT ?`).bind(month, now(), limit).all()).results;
 }

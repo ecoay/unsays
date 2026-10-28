@@ -38,13 +38,13 @@ export class Lobby extends DurableObject {
   async syncGuilds() {
     const DB = await db(this.env)?.catch(e => { console.error('db', e); return null; });
     if (!DB) return;
-    const rows = (await DB.prepare('SELECT id, slug, name, tag, speed, mode FROM guilds WHERE pass_until > ?').bind(now()).all()).results;
+    const rows = (await DB.prepare('SELECT id, slug, name, tag, icon, color, speed, mode FROM guilds WHERE pass_until > ?').bind(now()).all()).results;
     const want = new Set(rows.map(g => 'g-' + g.slug));
     for (const [id, t] of this.tables) if (t.guild && !want.has(id)) this.tables.delete(id);
     for (const g of rows) {
       const id = 'g-' + g.slug, old = this.tables.get(id);
       this.tables.set(id, { id, name: g.name, pack: 'all', speed: SPEEDS[g.speed] ? g.speed : 'turbo', mode: g.mode === 'clean' ? 'clean' : 'adult', target: 30,
-        special: true, custom: false, guild: { id: g.id, tag: g.tag, slug: g.slug }, createdAt: 0,
+        special: true, custom: false, guild: { id: g.id, tag: g.tag, slug: g.slug, icon: g.icon, color: g.color }, createdAt: 0,
         live: old?.live || { humans: 0, bots: 0, names: [], round: 0, acro: '', phase: 'waiting', emptySince: Date.now() } });
     }
     this.push();

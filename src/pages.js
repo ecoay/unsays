@@ -1,5 +1,6 @@
 import { GENERAL, TOPICS, PACKS as TOPIC_PACKS, clean } from '../public/shared.js';
 import { PACKS, GUILD_PASS, GIFTS, EMOJI_FREE, DROP, money } from '../public/catalog.js';
+import { logoImg } from '../public/guild-logo.js';
 import { monthKey, monthLabel, prevMonth, archiveMonth, topPlayers, topGuilds, topGifted, guildBoard, hall, guildActive } from './db.js';
 
 // Server-rendered pages for search engines and answer engines: how to play, topics, FAQ,
@@ -235,7 +236,7 @@ async function leaderboard(env, DB, url) {
   let rows = [];
   if (DB) rows = board === 'guilds' ? await topGuilds(DB, m) : board === 'gifted' ? await topGifted(DB, m) : await topPlayers(DB, m);
   const list = rows.length ? rows.map((r, i) => board === 'guilds'
-    ? `<div class="row"><span class="pos">${i + 1}</span><span class="who">${tag(r.tag)}<a href="/g/${esc(r.slug)}">${nameOf(r.name)}</a><small>${r.members} member${r.members === 1 ? '' : 's'}</small></span><span class="pts">${r.points}</span></div>`
+    ? `<div class="row"><span class="pos">${i + 1}</span><span class="who">${logoImg(r, 18)}${tag(r.tag)}<a href="/g/${esc(r.slug)}">${nameOf(r.name)}</a><small>${r.members} member${r.members === 1 ? '' : 's'}</small></span><span class="pts">${r.points}</span></div>`
     : board === 'gifted'
       ? `<div class="row"><span class="pos">${i + 1}</span><span class="who">${orb(r.hue)}${nameOf(r.name)}</span><span class="pts">👑 ${r.gifts}</span></div>`
       : `<div class="row"><span class="pos">${i + 1}</span><span class="who">${orb(r.hue)}${tag(r.tag)}${nameOf(r.name)}<small>${r.game_wins ? `${r.game_wins} win${r.game_wins === 1 ? '' : 's'}` : ''}</small></span><span class="pts">${r.points}</span></div>`).join('')
@@ -327,7 +328,7 @@ async function guildPage(env, DB, slug) {
     path: `/g/${slug}`, title: `[${g.tag}] ${clean(g.name, 'clean')}: unsays guild`,
     description: `The ${clean(g.name, 'clean')} guild on unsays: ${members} members, monthly guild leaderboard and Hall of Fame.`,
     schema: [crumbs(env, [['unsays', '/'], ['Leaderboard', '/leaderboard?board=guilds'], [g.name, `/g/${slug}`]])],
-    body: `<section class="hero"><span class="label">Guild · ${members} member${members === 1 ? '' : 's'}</span><h1><span class="holo">[${esc(g.tag)}]</span> ${nameOf(g.name)}</h1>
+    body: `<section class="hero"><span class="label">Guild · ${members} member${members === 1 ? '' : 's'}</span><h1>${logoImg(g, 56)} <span class="holo">[${esc(g.tag)}]</span> ${nameOf(g.name)}</h1>
       <p class="lede">Points scored at the guild's own table, ${esc(monthLabel(m))}.</p></section>
       <section><div class="board">${rows.length ? rows.map((r, i) => `<div class="row"><span class="pos">${i + 1}</span><span class="who">${orb(r.hue)}${nameOf(r.name)}<small>${r.gifts ? '👑 ' + r.gifts : ''}</small></span><span class="pts">${r.points}</span></div>`).join('') : '<div class="empty">No games at the guild table yet this month.</div>'}</div></section>
       ${months.length ? `<section><h2>Guild Hall of Fame</h2>${months.map(mo => `<div class="card"><span class="label">${esc(mo.label)}</span><div>${mo.players.map(r => `${['🥇', '🥈', '🥉'][r.rank - 1]} ${nameOf(r.name)} · ${r.value}`).join('<br>')}</div></div>`).join('')}</section>` : ''}
@@ -340,7 +341,7 @@ async function joinPage(env, DB, code) {
   return layout(env, {
     path: `/join/${code}`, title: g ? `Join [${g.tag}] ${g.name} on unsays` : 'Invite expired · unsays', noindex: true,
     description: 'You were invited to an unsays guild.',
-    body: g ? `<section class="hero"><span class="label">Guild invite</span><h1>Join <span class="holo">[${esc(g.tag)}]</span> ${nameOf(g.name)}</h1>
+    body: g ? `<section class="hero"><span class="label">Guild invite</span><h1>${logoImg(g, 56)} Join <span class="holo">[${esc(g.tag)}]</span> ${nameOf(g.name)}</h1>
       <p class="lede">Members wear the guild tag at every table, play at the guild's own table and climb the guild leaderboard. <b>Joining is free.</b></p>
       ${guildActive(g) ? '' : '<p class="notice">This guild\'s table is paused until the owner renews the Guild Pass. You can still join.</p>'}
       <div class="cta"><button class="btn prime" id="join" type="button">Join the guild</button><a class="btn" href="/">Not now</a></div><p id="msg" class="muted" role="status"></p></section>

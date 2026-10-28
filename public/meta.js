@@ -1,5 +1,6 @@
 // Accounts, the store, the flair locker and guilds. One sheet with three tabs, opened from the lobby.
 import { PACKS, GUILD_PASS, FLAIR, GIFTS, DROP, money, titleText } from './catalog.js';
+import { GUILD_COLORS, DEFAULT_COLOR, logoImg, logoURL } from './guild-logo.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -133,6 +134,38 @@ function storeHTML(me) {
 
 /* ---------- guild ---------- */
 
+// Logo picker: a tab per icon group, a grid of icons and a row of colors. The icon set loads on first use.
+const pickerHTML = (icon, color) => `<div class="gpick" data-icon="${esc(icon || 'briefcase')}" data-color="${esc(color || DEFAULT_COLOR)}">
+  <span class="label">Logo</span><input type="hidden" name="icon"><input type="hidden" name="color">
+  <div class="gp-head"><img class="glogo gp-preview" width="52" height="52" alt="Guild logo" src="${logoURL(icon, color)}">
+    <div class="gp-colors" role="radiogroup" aria-label="Logo color">${Object.entries(GUILD_COLORS).map(([k, [name, hex]]) =>
+      `<button type="button" class="gp-color" role="radio" data-color="${k}" aria-label="${name}" style="--c:${hex}"></button>`).join('')}</div></div>
+  <div class="gp-tabs" role="tablist"></div><div class="gp-grid"><span class="muted small">Loading icons…</span></div></div>`;
+
+let iconSet = null;
+async function mountPicker(el) {
+  const { ICONS, ICON_GROUPS } = await (iconSet ||= import('./guild-icons.js'));
+  const icon = el.querySelector('[name=icon]'), color = el.querySelector('[name=color]');
+  icon.value = ICONS[el.dataset.icon] ? el.dataset.icon : 'briefcase'; color.value = el.dataset.color;
+  let group = ICONS[icon.value][1];
+  const preview = () => {
+    el.querySelector('.gp-preview').src = logoURL(icon.value, color.value);
+    el.style.setProperty('--gc', GUILD_COLORS[color.value][1]);
+    el.querySelectorAll('.gp-color').forEach(b => b.setAttribute('aria-checked', b.dataset.color === color.value));
+    el.querySelectorAll('.gp-icon').forEach(b => b.setAttribute('aria-pressed', b.dataset.icon === icon.value));
+  };
+  const paintGrid = () => {
+    el.querySelector('.gp-tabs').innerHTML = ICON_GROUPS.map((g, i) => `<button type="button" role="tab" data-group="${i}" aria-selected="${i === group}">${g}</button>`).join('');
+    el.querySelector('.gp-grid').innerHTML = Object.entries(ICONS).filter(([, e]) => e[1] === group).map(([k, [label, , vb, body]]) =>
+      `<button type="button" class="gp-icon" data-icon="${k}" aria-label="${esc(label)}" title="${esc(label)}"><svg viewBox="${vb}" fill="currentColor" aria-hidden="true">${body}</svg></button>`).join('');
+    el.querySelectorAll('[data-group]').forEach(b => b.onclick = () => { group = +b.dataset.group; paintGrid(); });
+    el.querySelectorAll('.gp-icon').forEach(b => b.onclick = () => { icon.value = b.dataset.icon; preview(); });
+    preview();
+  };
+  el.querySelectorAll('.gp-color').forEach(b => b.onclick = () => { color.value = b.dataset.color; preview(); });
+  paintGrid();
+}
+
 function guildHTML(me) {
   const g = me.guild;
   if (!g) return `<p>A guild is your crew: a members-only table in the lobby, a guild tag on every member and your own leaderboard. <a href="/guild-pass" target="_blank" rel="noopener">How it works</a></p>
@@ -141,12 +174,13 @@ function guildHTML(me) {
     <form id="guildForm" class="gform">
       <label><span class="label">Guild name</span><input class="field" name="name" maxlength="28" required placeholder="The Gas Giants"></label>
       <label><span class="label">Tag (2 to 5 letters)</span><input class="field" name="tag" maxlength="5" required placeholder="FART" style="text-transform:uppercase"></label>
+      ${pickerHTML()}
       <div class="row2"><label><span class="label">Speed</span><select name="speed"><option value="turbo">Turbo</option><option value="classic">Classic</option></select></label>
       <label><span class="label">Language</span><select name="mode"><option value="adult">Adult language</option><option value="clean">Keep it clean</option></select></label></div>
       <div class="actions"><button class="btn prime" type="submit">Create guild</button></div>
       <p class="muted small">The guild's table, tag and leaderboard switch on when you add a Guild Pass (${money(GUILD_PASS.monthly.price)} a month).</p></form>`;
   const status = g.active ? `<span class="tag good">Active</span> until ${new Date(g.passUntil).toLocaleDateString()}` : '<span class="tag dim">Paused</span>';
-  const head = `<div class="ph"><div><div class="ph-name"><span class="gtag">[${esc(g.tag)}]</span>${esc(g.name)}</div><div class="muted">${status}</div></div></div>`;
+  const head = `<div class="ph">${logoImg(g, 52)}<div><div class="ph-name"><span class="gtag">[${esc(g.tag)}]</span>${esc(g.name)}</div><div class="muted">${status}</div></div></div>`;
   if (!g.owner) return `${head}<p class="muted">You're a member. ${g.active ? 'Find the guild table in the lobby.' : 'The guild table is paused until the owner renews the Guild Pass.'}</p>
     <div class="actions">${g.active ? `<a class="btn" href="/g/${esc(g.slug)}" target="_blank" rel="noopener">Guild leaderboard</a>` : ''}<button class="btn ghost" type="button" id="leaveGuild">Leave guild</button></div>`;
   const link = `${location.origin}/join/${g.invite}`;
@@ -163,6 +197,7 @@ function guildHTML(me) {
     <div class="members">${g.members.map(m => `<div class="mrow"><span class="orb sm" style="--h:${m.hue}"></span><span>${esc(m.name)}${m.id === me.id ? ' (you)' : ''}</span>${m.id === me.id ? '' : `<button class="btn small ghost" type="button" data-remove="${m.id}">Remove</button>`}</div>`).join('')}</div>
     <h3>Table settings</h3>
     <form id="guildEdit" class="gform"><label><span class="label">Guild name</span><input class="field" name="name" maxlength="28" value="${esc(g.name)}"></label>
+      ${pickerHTML(g.icon, g.color)}
       <div class="row2"><label><span class="label">Speed</span><select name="speed"><option value="turbo" ${g.speed === 'turbo' ? 'selected' : ''}>Turbo</option><option value="classic" ${g.speed === 'classic' ? 'selected' : ''}>Classic</option></select></label>
       <label><span class="label">Language</span><select name="mode"><option value="adult" ${g.mode === 'adult' ? 'selected' : ''}>Adult language</option><option value="clean" ${g.mode === 'clean' ? 'selected' : ''}>Keep it clean</option></select></label></div>
       <div class="actions"><button class="btn small" type="submit">Save</button></div></form>`;
@@ -189,6 +224,7 @@ function wire(body, me) {
     try { const j = await api('/api/checkout', { item: b.dataset.buy }); location.href = j.url; }
     finally { b.disabled = false; }
   }));
+  body.querySelectorAll('.gpick').forEach(el => mountPicker(el).catch(() => { el.querySelector('.gp-grid').textContent = 'Icons didn\'t load. Try again.'; }));
   body.querySelectorAll('[data-swap]').forEach(b => b.onclick = () => act(async () => {
     b.disabled = true;
     await api('/api/exchange', { item: b.dataset.swap });

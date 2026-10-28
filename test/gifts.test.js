@@ -60,3 +60,12 @@ test('an existing database gets the new columns', async () => {
   const id = await createPlayer(D1);
   assert.equal((await getPlayer(D1, id)).earned, 0);
 });
+
+test('guild logos use the LLC icon set and a fixed color list', async () => {
+  const { ICONS, ICON_GROUPS } = await import('../public/guild-icons.js');
+  const { logoSVG, logoURL, GUILD_COLORS } = await import('../public/guild-logo.js');
+  assert.equal(Object.keys(ICONS).length, 204);
+  assert.deepEqual(ICON_GROUPS, ['Animals', 'Faces', 'Food', 'Things', 'Brands']);
+  assert.match(logoSVG(ICONS.cow, 'gold'), new RegExp(GUILD_COLORS.gold[1]));
+  assert.equal(logoURL('<script>', 'nope'), '/gi/briefcase-pink.svg');
+});
