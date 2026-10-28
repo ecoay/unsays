@@ -92,3 +92,7 @@ footer nav{display:flex;gap:6px 18px;flex-wrap:wrap}
 footer a{color:var(--ink-dim)}
 .notice{border:1px solid rgba(255,211,107,.35);color:var(--gold);border-radius:12px;padding:10px 14px;font-size:14px}
 input.field{font:inherit;color:var(--ink);background:rgba(10,8,22,.7);border:1px solid var(--line-hi);border-radius:12px;padding:10px 14px;min-width:0}
+/* Ads: free players only, always labeled, set apart from buttons. */
+.ad-slot{display:flex;flex-direction:column;gap:6px;min-height:120px;padding-top:8px;border-top:1px solid var(--line)}
+.ad-slot[hidden]{display:none}
+.ad-label{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
