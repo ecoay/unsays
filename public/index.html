@@ -360,7 +360,7 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
     <g class="x"><path d="m16 9 6 6"/><path d="m22 9-6 6"/></g>
   </svg>
 </button>
-<audio id="bgm" src="audio/theme.mp3" loop preload="none"></audio>
+<audio id="bgm" src="audio/theme-instrumental.mp3" loop preload="none"></audio>
 
 <div class="app">
   <!-- INTRO -->
@@ -646,7 +646,7 @@ function connectLobby(){
 function enterLobby(){
   leaveTable();
   if (location.hash) history.replaceState(null, '', location.pathname);
-  show('lobby'); inLobby = true; MUSIC.scene('lobby');
+  show('lobby'); inLobby = true;
   paintMe();
   BG.target=.1; renderTables();
   if (!lobbyWS || lobbyWS.readyState > 1) connectLobby();
@@ -700,7 +700,7 @@ function joinTable(id){
   leaveLobby(); leaveTable();
   T = { id, retry:0, S:null, offset:0, key:'', config:null };
   history.replaceState(null, '', '#t-' + id);
-  show('table'); MUSIC.scene('table');
+  show('table');
   $('#tName').textContent = TABLES.find(t=>t.id===id)?.name || 'Joining…';
   $('#tBadges').innerHTML=''; $('#log').innerHTML=''; $('#board').innerHTML='';
   $('#stageBody').innerHTML = `<div class="banner"><span class="big">Taking a seat…</span></div>`;
@@ -1042,32 +1042,18 @@ function confetti(big){
 }
 
 /* ======================= Background music ======================= */
-// The vocal theme plays on the intro and in the lobby; tables get the instrumental cut so it doesn't talk over the round.
 const MUSIC = (() => {
-  const el = $('#bgm'), btn = $('#musicBtn'), VOL = .35;
-  const TRACKS = { lobby: 'audio/theme.mp3', table: 'audio/theme-instrumental.mp3' };
-  el.volume = VOL;
-  let on = store.get('unsays.music', true), started = false, fade = 0;
+  const el = $('#bgm'), btn = $('#musicBtn');
+  el.volume = .35;
+  let on = store.get('unsays.music', true);
   const paint = () => { btn.setAttribute('aria-pressed', String(on)); btn.title = on ? 'Mute music' : 'Play music'; btn.setAttribute('aria-label', btn.title); };
   // Browsers only allow playback after a click, so the first start happens from one.
-  const play = () => { if (on && started) el.play().catch(()=>{}); };
-  const ramp = (to, ms, done) => {
-    cancelAnimationFrame(fade); const from = el.volume, t0 = performance.now();
-    (function step(t){ const k = Math.min(1, (t - t0) / ms); el.volume = from + (to - from) * k; if (k < 1) fade = requestAnimationFrame(step); else if (done) done(); })(t0);
-  };
-  btn.addEventListener('click', () => { on = !on; store.set('unsays.music', on); paint(); if (on) { started = true; el.volume = VOL; play(); } else el.pause(); });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) el.pause(); else play(); });
+  const play = () => { if (on) el.play().catch(()=>{}); };
+  btn.addEventListener('click', () => { on = !on; store.set('unsays.music', on); paint(); if (on) el.play().catch(()=>{}); else el.pause(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) el.pause(); else if (on && started) play(); });
+  let started = false;
   paint();
-  return {
-    start(){ started = true; play(); },
-    // Crossfade to the track for a screen; does nothing if it's already playing.
-    scene(name){
-      const src = TRACKS[name] || TRACKS.lobby;
-      if (el.getAttribute('src') === src) return;
-      const swap = () => { el.src = src; el.volume = 0; play(); ramp(VOL, 800); };
-      if (on && started && !el.paused && el.currentTime > 1) ramp(0, 500, swap); else { cancelAnimationFrame(fade); el.src = src; el.volume = VOL; play(); }
-    }
-  };
+  return { start(){ started = true; play(); } };
 })();
 
 /* boot */
