@@ -4,7 +4,7 @@ import {
   rnd, pick, shuffle, normal, clean, makeAcronym, checkAnswer, botPhrase, humanQuality, topicById, publicTopic,
 } from '../public/shared.js';
 import { EMOJI_FREE, GIFTS } from '../public/catalog.js';
-import { db, tableProfile, recordRound, recordGameWin, sendGift } from './db.js';
+import { db, tableProfile, recordRound, recordGameWin, sendGift, recordFriends } from './db.js';
 
 // One Table object per room. It owns the game clock, scoring and bots, and sends each
 // player their own view of the state after every change. Sockets are accepted without
@@ -567,8 +567,27 @@ export class Table extends DurableObject {
     const c = this.byId(champ);
     if (!c.bot && c.prof && this.wasRanked) this.db().then(DB => DB && recordGameWin(DB, c.id, this.config.guild?.id || null)).catch(e => console.error('win', e));
     this.sys(`${c.name} wins the game ${Math.max(votes[a], votes[b])} to ${Math.min(votes[a], votes[b])}.`);
+    this.friendStreaks();
     if (c.bot) this.later(1, () => { if (this.players.has(c.id)) this.chat(c, pick(CHATTER.win)); });
     this.setPhase('over', this.T.over, () => this.newGame());
+  }
+
+  // Finishing a game together keeps a daily friend streak going. Each player hears about theirs.
+  friendStreaks() {
+    const here = this.connected().filter(p => p.prof);
+    if (here.length < 2) return;
+    this.db().then(async DB => {
+      if (!DB) return;
+      const news = new Map();
+      for (const r of await recordFriends(DB, here.map(p => p.id))) for (const [me, other] of [[r.a, r.b], [r.b, r.a]]) {
+        const o = this.players.get(other);
+        if (o) news.set(me, [...(news.get(me) || []), `${o.name} ${r.streak}`]);
+      }
+      for (const [me, list] of news) {
+        const p = this.players.get(me);
+        if (p?.connected) this.send(p.ws, { t: 'toast', msg: `🔥 Friend streaks: ${list.slice(0, 4).join(', ')}${list.length > 4 ? '…' : ''}` });
+      }
+    }).catch(e => console.error('friends', e));
   }
 
   /* ---------- views ---------- */

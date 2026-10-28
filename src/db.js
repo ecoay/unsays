@@ -1,4 +1,4 @@
-import { unlocked, titleText, FLAIR, DROP, DAY, dayKey, packById } from '../public/catalog.js';
+import { unlocked, titleText, FLAIR, DROP, DAY, dayKey, packById, checkinGifts, STREAK_REWARDS, FRIEND_REWARDS } from '../public/catalog.js';
 
 // D1 holds players, sessions, purchases, guilds, monthly scores, gifts and the Hall of Fame.
 // The schema is applied on first use, so a fresh database needs no migration step.
@@ -7,7 +7,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS players (id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT 'guest', hue INTEGER NOT NULL DEFAULT 0,
     email TEXT UNIQUE, google_sub TEXT UNIQUE, stripe_customer TEXT, gifts INTEGER NOT NULL DEFAULT 0, equip TEXT NOT NULL DEFAULT '{}',
     guild_id TEXT, created_at INTEGER NOT NULL, seen_at INTEGER NOT NULL, earned INTEGER NOT NULL DEFAULT 0,
-    drop_until INTEGER NOT NULL DEFAULT 0, drop_day TEXT)`,
+    drop_until INTEGER NOT NULL DEFAULT 0, drop_day TEXT, checkin_day TEXT, streak INTEGER NOT NULL DEFAULT 0, best_streak INTEGER NOT NULL DEFAULT 0)`,
   `CREATE INDEX IF NOT EXISTS players_guild ON players(guild_id)`,
   `CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, player_id TEXT NOT NULL, created_at INTEGER NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS sessions_player ON sessions(player_id)`,
@@ -26,6 +26,9 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS gift_events (id INTEGER PRIMARY KEY AUTOINCREMENT, month TEXT NOT NULL, from_id TEXT NOT NULL, to_id TEXT NOT NULL,
     value INTEGER NOT NULL, kind TEXT NOT NULL, line TEXT NOT NULL, acro TEXT NOT NULL, table_id TEXT, at INTEGER NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS gifts_to ON gift_events(month, to_id)`,
+  `CREATE TABLE IF NOT EXISTS checkins (player_id TEXT NOT NULL, day TEXT NOT NULL, gifts INTEGER NOT NULL, PRIMARY KEY (player_id, day))`,
+  `CREATE TABLE IF NOT EXISTS friend_streaks (a TEXT NOT NULL, b TEXT NOT NULL, day TEXT NOT NULL, streak INTEGER NOT NULL, best INTEGER NOT NULL, PRIMARY KEY (a, b))`,
+  `CREATE INDEX IF NOT EXISTS friend_streaks_b ON friend_streaks(b)`,
   `CREATE TABLE IF NOT EXISTS hall (month TEXT NOT NULL, board TEXT NOT NULL, rank INTEGER NOT NULL, player_id TEXT, guild_id TEXT, name TEXT NOT NULL,
     tag TEXT, value INTEGER NOT NULL, line TEXT, PRIMARY KEY (month, board, rank))`,
 ];
@@ -35,6 +38,9 @@ const COLUMNS = [
   'ALTER TABLE players ADD COLUMN earned INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE players ADD COLUMN drop_until INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE players ADD COLUMN drop_day TEXT',
+  'ALTER TABLE players ADD COLUMN checkin_day TEXT',
+  'ALTER TABLE players ADD COLUMN streak INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE players ADD COLUMN best_streak INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE guilds ADD COLUMN icon TEXT',
   'ALTER TABLE guilds ADD COLUMN color TEXT',
 ];
@@ -99,12 +105,14 @@ export async function profile(DB, id) {
   const p = await getPlayer(DB, id);
   if (!p) return null;
   const m = monthKey();
-  const [owned, titles, score, received, g] = await Promise.all([
+  const [owned, titles, score, received, g, days, friends] = await Promise.all([
     DB.prepare('SELECT item FROM owned WHERE player_id = ?').bind(id).all(),
     DB.prepare('SELECT title FROM titles WHERE player_id = ? ORDER BY at DESC').bind(id).all(),
     DB.prepare('SELECT points, round_wins, game_wins FROM scores WHERE month = ? AND player_id = ?').bind(m, id).first(),
     DB.prepare('SELECT COALESCE(SUM(value), 0) AS n FROM gift_events WHERE to_id = ?').bind(id).first(),
     p.guild_id ? DB.prepare('SELECT * FROM guilds WHERE id = ?').bind(p.guild_id).first() : null,
+    DB.prepare('SELECT day, gifts FROM checkins WHERE player_id = ? AND day >= ? ORDER BY day').bind(id, dayKey(now() - 62 * DAY)).all(),
+    friendStreaks(DB, id),
   ]);
   const ownedIds = owned.results.map(r => r.item);
   const earned = titles.results.map(r => r.title);
@@ -124,6 +132,7 @@ export async function profile(DB, id) {
     owned: ownedIds, earnedTitles: earned, equip: eq,
     unlocked: { name: [...u.name], win: [...u.win], reveal: [...u.reveal], title: [...u.title], emoji: [...u.emoji] },
     month: m, score: score || { points: 0, round_wins: 0, game_wins: 0 }, giftsReceived: received.n,
+    checkin: { today: p.checkin_day === dayKey(), streak: liveStreak(p), best: p.best_streak, days: days.results }, friends,
     earned: p.earned, drop: p.drop_until > now() ? { until: p.drop_until, perDay: DROP.perDay, claimedToday: p.drop_day === dayKey(), dropped } : null,
     guild, adFree: !!(g && g.owner_id === id && guildActive(g)),
   };
@@ -157,6 +166,10 @@ export async function mergePlayers(DB, fromId, intoId) {
     DB.prepare('UPDATE gift_events SET to_id = ? WHERE to_id = ?').bind(intoId, fromId),
     DB.prepare('UPDATE gift_events SET from_id = ? WHERE from_id = ?').bind(intoId, fromId),
     DB.prepare('UPDATE sessions SET player_id = ? WHERE player_id = ?').bind(intoId, fromId),
+    DB.prepare('INSERT OR IGNORE INTO checkins (player_id, day, gifts) SELECT ?, day, gifts FROM checkins WHERE player_id = ?').bind(intoId, fromId),
+    DB.prepare('DELETE FROM checkins WHERE player_id = ?').bind(fromId),
+    DB.prepare(`UPDATE players SET best_streak = MAX(best_streak, ?), streak = CASE WHEN COALESCE(checkin_day, '') >= ? THEN streak ELSE ? END,
+      checkin_day = MAX(COALESCE(checkin_day, ''), ?) WHERE id = ?`).bind(from.best_streak || 0, from.checkin_day || '', from.streak || 0, from.checkin_day || '', intoId),
     DB.prepare('DELETE FROM scores WHERE player_id = ?').bind(fromId),
     DB.prepare('DELETE FROM guild_scores WHERE player_id = ?').bind(fromId),
     DB.prepare('DELETE FROM owned WHERE player_id = ?').bind(fromId),
@@ -225,6 +238,58 @@ export async function exchange(DB, id, item) {
   const ins = await DB.prepare('INSERT OR IGNORE INTO owned (player_id, item, at) VALUES (?, ?, ?)').bind(id, item, now()).run();
   if (!ins.meta.changes) await DB.prepare('UPDATE players SET earned = earned + ? WHERE id = ?').bind(pack.xcost, id).run();
   return null;
+}
+
+/* ---------- daily check-in + friend streaks ---------- */
+
+// A streak is alive while its last day is today or yesterday.
+const liveStreak = (p, t = now()) => p.checkin_day === dayKey(t) || p.checkin_day === dayKey(t - DAY) ? p.streak : 0;
+const grant = (DB, id, item, t) => DB.prepare('INSERT OR IGNORE INTO owned (player_id, item, at) VALUES (?, ?, ?)').bind(id, item, t);
+
+// Check in for today. Returns { streak, gifts, rewards } or null if already done today.
+export async function checkIn(DB, id, t = now()) {
+  const p = await getPlayer(DB, id);
+  if (!p) return null;
+  const day = dayKey(t);
+  const streak = p.checkin_day === dayKey(t - DAY) ? p.streak + 1 : 1;
+  const gifts = checkinGifts(streak);
+  const r = await DB.prepare(`UPDATE players SET checkin_day = ?, streak = ?, best_streak = MAX(best_streak, ?), gifts = gifts + ?
+    WHERE id = ? AND (checkin_day IS NULL OR checkin_day <> ?)`).bind(day, streak, streak, gifts, id, day).run();
+  if (!r.meta.changes) return null;
+  const rewards = STREAK_REWARDS.filter(x => x.days === streak);
+  await DB.batch([
+    DB.prepare('INSERT OR IGNORE INTO checkins (player_id, day, gifts) VALUES (?, ?, ?)').bind(id, day, gifts),
+    ...STREAK_REWARDS.filter(x => x.days <= streak).map(x => grant(DB, id, x.id, t)),
+  ]);
+  return { streak, gifts, rewards: rewards.map(x => x.id) };
+}
+
+// Everyone who finished a game together today extends their streak with each other.
+// Returns [{ a, b, streak }] for pairs whose streak moved today.
+export async function recordFriends(DB, ids, t = now()) {
+  const uniq = [...new Set(ids)].sort();
+  const pairs = [];
+  for (let i = 0; i < uniq.length; i++) for (let j = i + 1; j < uniq.length; j++) pairs.push([uniq[i], uniq[j]]);
+  if (!pairs.length) return [];
+  const day = dayKey(t), yday = dayKey(t - DAY);
+  const before = new Map((await DB.prepare(`SELECT a, b, day FROM friend_streaks WHERE a IN (${uniq.map(() => '?').join(',')})`).bind(...uniq).all())
+    .results.map(r => [r.a + ' ' + r.b, r.day]));
+  await DB.batch(pairs.map(([a, b]) => DB.prepare(`INSERT INTO friend_streaks (a, b, day, streak, best) VALUES (?, ?, ?, 1, 1)
+    ON CONFLICT (a, b) DO UPDATE SET streak = CASE WHEN day = excluded.day THEN streak WHEN day = ? THEN streak + 1 ELSE 1 END,
+      best = MAX(best, CASE WHEN day = excluded.day THEN streak WHEN day = ? THEN streak + 1 ELSE 1 END), day = excluded.day`).bind(a, b, day, yday, yday)));
+  const moved = pairs.filter(([a, b]) => before.get(a + ' ' + b) !== day);
+  if (!moved.length) return [];
+  const rows = (await DB.prepare(`SELECT a, b, streak FROM friend_streaks WHERE a IN (${uniq.map(() => '?').join(',')}) AND day = ?`).bind(...uniq, day).all()).results
+    .filter(r => moved.some(([a, b]) => a === r.a && b === r.b));
+  const grants = rows.flatMap(r => FRIEND_REWARDS.filter(x => x.days <= r.streak).flatMap(x => [grant(DB, r.a, x.id, t), grant(DB, r.b, x.id, t)]));
+  if (grants.length) await DB.batch(grants);
+  return rows;
+}
+
+// A player's live friend streaks, longest first.
+export async function friendStreaks(DB, id, t = now()) {
+  return (await DB.prepare(`SELECT f.streak, f.best, f.day, p.id, p.name, p.hue FROM friend_streaks f JOIN players p ON p.id = CASE WHEN f.a = ? THEN f.b ELSE f.a END
+    WHERE (f.a = ? OR f.b = ?) AND f.day >= ? ORDER BY f.streak DESC, f.day DESC LIMIT 12`).bind(id, id, id, dayKey(t - DAY)).all()).results;
 }
 
 /* ---------- boards ---------- */

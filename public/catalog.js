@@ -9,7 +9,7 @@ export const GUILD_PASS = {
 // Name styles, win animations, vote-reveal effects and titles. Packs unlock a group of these.
 export const FLAIR = {
   name: {
-    holo: 'Holo', gold: 'Gold leaf', neon: 'Neon sign', glitch: 'Glitch', fire: 'On fire', frost: 'Frostbite', wrapped: 'Gift wrapped',
+    holo: 'Holo', gold: 'Gold leaf', neon: 'Neon sign', glitch: 'Glitch', fire: 'On fire', frost: 'Frostbite', wrapped: 'Gift wrapped', graffiti: 'Graffiti',
   },
   win: {
     supernova: 'Supernova', storm: 'Confetti storm', warp: 'Hyperspace', snowfall: 'Snowfall',
@@ -31,6 +31,28 @@ export const EXCHANGE_TITLES = [
   ['fanclub', 'Fan Club President', 60], ['favorite', 'Crowd Favorite', 75], ['untouchable', 'Untouchable', 100], ['icon', 'Icon', 150],
 ];
 for (const [k, t] of EXCHANGE_TITLES) FLAIR.title[k] = t;
+
+// Daily check-in: gifts every day in a row, more the longer the streak, a bonus every 7th day,
+// and flair at milestones. Missing a day starts the streak over; the rewards already won stay.
+export const CHECKIN = { max: 4, weekBonus: 3 };
+export const checkinGifts = streak => Math.min(CHECKIN.max, 1 + Math.floor((streak - 1) / 7)) + (streak % 7 === 0 ? CHECKIN.weekBonus : 0);
+export const STREAK_REWARDS = [
+  { days: 3, id: 'streak_3', title: ['showing', 'Showing Up'] },
+  { days: 7, id: 'streak_7', title: ['regular', 'Regular'] },
+  { days: 14, id: 'streak_14', name: 'graffiti' },
+  { days: 30, id: 'streak_30', title: ['cantstay', 'Can\'t Stay Away'] },
+  { days: 60, id: 'streak_60', title: ['addicted', 'Addicted'] },
+  { days: 100, id: 'streak_100', title: ['nolife', 'No Life'] },
+  { days: 365, id: 'streak_365', title: ['lifer', 'Lifer'] },
+];
+// Friend streaks: a day counts when two players finish a game at the same table.
+export const FRIEND_REWARDS = [
+  { days: 7, id: 'fstreak_7', title: ['rideordie', 'Ride or Die'] },
+  { days: 30, id: 'fstreak_30', title: ['hip', 'Joined at the Hip'] },
+  { days: 100, id: 'fstreak_100', title: ['crime', 'Partners in Crime'] },
+];
+for (const r of [...STREAK_REWARDS, ...FRIEND_REWARDS]) if (r.title) FLAIR.title[r.title[0]] = r.title[1];
+const rewardPack = (r, kind) => ({ id: r.id, kind, days: r.days, name: r.title ? `"${r.title[1]}"` : `${FLAIR.name[r.name]} name`, blurb: '', grants: r.title ? { title: [r.title[0]] } : { name: [r.name] } });
 
 export const EMOJI_FREE = ['👍', '👎', '😂', '😬'];
 
@@ -54,6 +76,9 @@ export const PACKS = [
   ...EXCHANGE_TITLES.map(([k, t, xcost]) => ({ id: 'x_' + k, kind: 'exchange', xcost, name: `"${t}"`, blurb: 'A title under your name.', grants: { title: [k] } })),
   { id: 'x_wrapped', kind: 'exchange', xcost: 120, name: 'Gift wrapped name', blurb: 'Your name in ribbon stripes with a bow on top.', grants: { name: ['wrapped'] } },
   { id: 'x_emoji', kind: 'exchange', xcost: 30, name: 'Gifted emoji', blurb: 'Emoji you can only get from the exchange.', emoji: ['🎀', '🥹', '💝'] },
+  // Won by streaks, never sold.
+  ...STREAK_REWARDS.map(r => rewardPack(r, 'streak')),
+  ...FRIEND_REWARDS.map(r => rewardPack(r, 'fstreak')),
 ];
 
 export const DROP = PACKS.find(p => p.id === 'gift_drop');
