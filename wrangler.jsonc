@@ -16,9 +16,9 @@
   },
   // SQLite-backed Durable Objects are available on the Workers free plan.
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Table", "Lobby"] }],
-  // Players, purchases, guilds, scores and the Hall of Fame. Wrangler creates the database on the
-  // first deploy, and the Worker applies its own schema, so there is no migration step.
-  "d1_databases": [{ "binding": "DB", "database_name": "unsays" }],
+  // Players, purchases, guilds, scores and the Hall of Fame. The Worker applies its own schema,
+  // so there is no migration step.
+  "d1_databases": [{ "binding": "DB", "database_name": "unsays", "database_id": "cf761d87-ab8f-4cf1-b7c5-564a4d4aa477" }],
   // 00:10 UTC on the 1st: seal last month's boards into the Hall of Fame.
   "triggers": { "crons": ["10 0 1 * *"] },
   // Secrets (set in the dashboard, not here): STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,

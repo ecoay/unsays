@@ -33,7 +33,7 @@ Each feature switches on when its keys exist, so the game keeps working with non
 
 When sign-in is set up, buying needs a signed-in account so purchases follow the player. Without any sign-in method, purchases attach to the browser's guest account.
 
-`SITE_URL`, `EMAIL_FROM` and `CONTACT_EMAIL` are plain variables in `wrangler.jsonc`. The D1 database is created on the first deploy. If the deploy log says it couldn't provision it, create a D1 database named `unsays` in the dashboard and add its `database_id` to `wrangler.jsonc`.
+`SITE_URL`, `EMAIL_FROM` and `CONTACT_EMAIL` are plain variables in `wrangler.jsonc`. The D1 database `unsays` is bound by its `database_id` in `wrangler.jsonc`.
 
 ## Rules (from the design doc)
 
