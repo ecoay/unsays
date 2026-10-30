@@ -36,7 +36,7 @@ test('preview hosts stay out of search; the real site lists every topic page', a
   assert.match(robots(env, true), /Sitemap: https:\/\/unsays.com\/sitemap.xml/);
   const xml = await sitemap(env, null);
   assert.equal((xml.match(/\/topics\//g) || []).length, 16);
-  assert.match(llms(env), /^# unsays/);
+  assert.match(llms(env), /^# Unsay/);
 });
 
 test('month helpers', () => {

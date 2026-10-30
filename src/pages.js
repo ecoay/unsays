@@ -38,23 +38,23 @@ const EXAMPLES = {
 const acroOf = line => line.split(/\s+/).map(w => (w.match(/[a-z]/i) || [''])[0].toUpperCase()).join('');
 
 export const FAQ = [
-  ['What is unsays?', 'unsays is a free multiplayer party game you play in your browser. Everyone at the table gets the same random letters, like B-O-I-Q, and writes a phrase whose words start with those letters. Then everyone votes for the funniest line. The tagline is "Things you can\'t unsay": every round has a topic, such as things you can\'t say to your boss.'],
-  ['How do you play unsays?', 'Pick a name, join a table and write a line that fits the letters before the clock runs out. Each word has to start with the next letter, in order. When time is up, every line is shown without names and you vote for your favorite. The round winner picks the next topic, and the first player to 30 points goes to a three-round face-off for the win.'],
-  ['Is unsays free?', 'Yes. Every public table, private invite tables, the global leaderboard and the Hall of Fame are free. Optional purchases are the Guild Pass ($2.99 a month), flair packs, emoji packs and gift packs. None of them add points or votes.'],
-  ['Is unsays like Acrophobia?', 'Yes. unsays is a modern take on Acrophobia, the acronym game from the late 1990s that people played on Mplayer and IRC. It keeps the core loop of write, vote and score, and adds topics, a face-off final, guilds and monthly leaderboards.'],
+  ['What is Unsay?', 'Unsay is a free multiplayer party game you play in your browser. Everyone at the table gets the same random letters, like B-O-I-Q, and writes a phrase whose words start with those letters. Then everyone votes for the funniest line. The tagline is "Things you can\'t unsay": every round has a topic, such as things you can\'t say to your boss.'],
+  ['How do you play Unsay?', 'Pick a name, join a table and write a line that fits the letters before the clock runs out. Each word has to start with the next letter, in order. When time is up, every line is shown without names and you vote for your favorite. The round winner picks the next topic, and the first player to 30 points goes to a three-round face-off for the win.'],
+  ['Is Unsay free?', 'Yes. Every public table, private invite tables, the global leaderboard and the Hall of Fame are free. Optional purchases are the Guild Pass ($2.99 a month), flair packs, emoji packs and gift packs. None of them add points or votes.'],
+  ['Is Unsay like Acrophobia?', 'Yes. Unsay is a modern take on Acrophobia, the acronym game from the late 1990s that people played on Mplayer and IRC. It keeps the core loop of write, vote and score, and adds topics, a face-off final, guilds and monthly leaderboards.'],
   ['How many people can play?', 'Up to 14 people can sit at a table. If fewer than 5 people are there, bots fill the empty seats so a game can always start, and they leave as real people join.'],
   ['How does scoring work?', 'Each vote your line gets is worth 1 point. The round winner gets a bonus of 1 point per letter. The first line to get a vote earns 2 extra points for speed, and everyone who voted for the winner gets 1 point. If you don\'t vote, you lose that round\'s points.'],
-  ['How long is a game of unsays?', 'A Turbo game to 30 points usually takes 10 to 15 minutes. Turbo rounds give 30 seconds to write and 15 to vote, Classic rounds give 60 and 20, and 6- and 7-letter rounds get extra time. Sprint tables play to 15 for a shorter game.'],
-  ['Can I play unsays with friends privately?', 'Yes. Choose Create table in the lobby, then send your friends the invite link. Your table waits in a waiting room until you press Start, and you can turn bots off.'],
-  ['Is unsays family friendly?', 'Tables marked Keep it clean blur common swear words in lines and chat. Tables marked Adult language don\'t. The game is meant for players 13 and older, and Adult tables for players 18 and older.'],
+  ['How long is a game of Unsay?', 'A Turbo game to 30 points usually takes 10 to 15 minutes. Turbo rounds give 30 seconds to write and 15 to vote, Classic rounds give 60 and 20, and 6- and 7-letter rounds get extra time. Sprint tables play to 15 for a shorter game.'],
+  ['Can I play Unsay with friends privately?', 'Yes. Choose Create table in the lobby, then send your friends the invite link. Your table waits in a waiting room until you press Start, and you can turn bots off.'],
+  ['Is Unsay family friendly?', 'Tables marked Keep it clean blur common swear words in lines and chat. Tables marked Adult language don\'t. The game is meant for players 13 and older, and Adult tables for players 18 and older.'],
   ['Do I need an account or a download?', 'No download is needed, and it works on phones, tablets and computers. You can play as a guest right away. Signing in with Google or an email link keeps your points, purchases and guild on every device.'],
-  ['What is the unsays Guild Pass?', 'The Guild Pass costs $2.99 a month (or $24 a year). It gives your crew its own members-only 14-seat table in the lobby, a guild leaderboard with its own Hall of Fame, a guild tag next to every member\'s name, and no ads for the owner.'],
-  ['How does the unsays leaderboard work?', 'Points from public tables count on the global leaderboard when at least 3 real people played the round. Bots never count. Every board resets on the 1st of the month, and that month\'s top 3 players, top guild and most-gifted line go into the Hall of Fame for good, with a free champion title.'],
+  ['What is the Unsay Guild Pass?', 'The Guild Pass costs $2.99 a month (or $24 a year). It gives your crew its own members-only 14-seat table in the lobby, a guild leaderboard with its own Hall of Fame, a guild tag next to every member\'s name, and no ads for the owner.'],
+  ['How does the Unsay leaderboard work?', 'Points from public tables count on the global leaderboard when at least 3 real people played the round. Bots never count. Every board resets on the 1st of the month, and that month\'s top 3 players, top guild and most-gifted line go into the Hall of Fame for good, with a free champion title.'],
   ['What are flair, emoji and gift packs?', 'Flair packs change how your name and wins look: name styles, win animations, vote-reveal effects and titles. Emoji packs add reactions that float over the table. Gifts let you reward a line you loved after the votes are in. They are all cosmetic and never change the score.'],
-  ['What is the unsays gift drop?', 'The monthly gift drop costs $2.99 and adds 2 gifts to your account every day for 30 days, the cheapest way to get gifts. Each day\'s gifts arrive when you open the game, and a day you miss isn\'t carried over. Buying another adds 30 more days.'],
-  ['How do daily check-ins work in unsays?', 'Open the Daily tab once a day and check in for free gifts. Every day in a row adds to your streak: you get 1 gift a day in the first week, up to 4 a day later on, plus 3 extra every 7th day. Streaks of 3, 7, 30, 60, 100 and 365 days win titles like "Regular" and "No Life", and 14 days wins the Graffiti name style. Miss a day and the streak starts over, but you keep everything you won.'],
+  ['What is the Unsay gift drop?', 'The monthly gift drop costs $2.99 and adds 2 gifts to your account every day for 30 days, the cheapest way to get gifts. Each day\'s gifts arrive when you open the game, and a day you miss isn\'t carried over. Buying another adds 30 more days.'],
+  ['How do daily check-ins work in Unsay?', 'Open the Daily tab once a day and check in for free gifts. Every day in a row adds to your streak: you get 1 gift a day in the first week, up to 4 a day later on, plus 3 extra every 7th day. Streaks of 3, 7, 30, 60, 100 and 365 days win titles like "Regular" and "No Life", and 14 days wins the Graffiti name style. Miss a day and the streak starts over, but you keep everything you won.'],
   ['What are friend streaks?', 'Finish a game at the same table as someone and you start a 🔥 streak with them. Play together again the next day to keep it going. A 7-day streak wins both of you the "Ride or Die" title, 30 days wins "Joined at the Hip" and 100 days wins "Partners in Crime".'],
-  ['What is the unsays Gift Exchange?', 'Gifts other players send to your lines are banked as received gifts. Spend them in the Gift Exchange on flair and emoji packs, or on titles and emoji you can only get there, like "The Gifted" and "They Love Me". Gifts you bought can\'t be exchanged, and gifts can\'t be traded between players.'],
+  ['What is the Unsay Gift Exchange?', 'Gifts other players send to your lines are banked as received gifts. Spend them in the Gift Exchange on flair and emoji packs, or on titles and emoji you can only get there, like "The Gifted" and "They Love Me". Gifts you bought can\'t be exchanged, and gifts can\'t be traded between players.'],
 ];
 
 const HOWTO = [
@@ -135,7 +135,7 @@ const faqSchema = items => ({
   mainEntity: items.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
 });
 export const gameSchema = env => ({
-  '@context': 'https://schema.org', '@type': 'VideoGame', name: 'unsays', url: site(env) + '/',
+  '@context': 'https://schema.org', '@type': 'VideoGame', name: 'Unsay', url: site(env) + '/',
   description: 'A free multiplayer acronym party game in the style of Acrophobia. Everyone gets the same letters, writes the line they can\'t unsay, and votes for the funniest.',
   genre: ['Party game', 'Word game'], gamePlatform: 'Web browser', applicationCategory: 'Game', operatingSystem: 'Any',
   playMode: 'MultiPlayer', numberOfPlayers: { '@type': 'QuantitativeValue', minValue: 1, maxValue: 14 }, image: site(env) + '/og.png',
@@ -153,10 +153,10 @@ function howToPlay(env) {
     path: '/how-to-play', title: 'How to Play Unsay: Rules, Timers, Scoring',
     description: 'Unsay rules: 3 to 7 letter acronyms, 30 or 60 second rounds, blind voting, +1 per vote, winner picks the topic, first to 30 starts the face-off.',
     schema: [
-      { '@context': 'https://schema.org', '@type': 'HowTo', name: 'How to play unsays', totalTime: 'PT15M', step: HOWTO.map(([name, text], i) => ({ '@type': 'HowToStep', position: i + 1, name, text })) },
-      faqSchema(FAQ.filter(([q]) => /scoring|long|many/i.test(q))), crumbs(env, [['unsays', '/'], ['How to play', '/how-to-play']]),
+      { '@context': 'https://schema.org', '@type': 'HowTo', name: 'How to play Unsay', totalTime: 'PT15M', step: HOWTO.map(([name, text], i) => ({ '@type': 'HowToStep', position: i + 1, name, text })) },
+      faqSchema(FAQ.filter(([q]) => /scoring|long|many/i.test(q))), crumbs(env, [['Unsay', '/'], ['How to play', '/how-to-play']]),
     ],
-    body: `<section class="hero"><span class="label">Rules</span><h1>How to play <span class="holo">unsays</span></h1>
+    body: `<section class="hero"><span class="label">Rules</span><h1>How to play <span class="holo">Unsay</span></h1>
       <p class="lede"><b>Everyone gets the same letters. You write a line whose words start with those letters, in order.</b> Then everyone votes for the funniest one, and the winner picks the next topic.</p>
       <div class="card ex"><span class="label">Example · Things you can't say to your boss</span>${tiles('BOIQ')}<q>Bonus or I quit</q></div></section>
     <section><h2>Step by step</h2><ol class="steps">${HOWTO.map(([n, t]) => `<li><b>${esc(n)}.</b> ${esc(t)}</li>`).join('')}</ol></section>
@@ -183,10 +183,10 @@ function howToPlay(env) {
 function topicsIndex(env) {
   const groups = Object.entries(TOPIC_PACKS).filter(([k]) => k !== 'all');
   return layout(env, {
-    path: '/topics', title: 'unsays topics: 15 things you can\'t unsay, plus General',
-    description: 'Every unsays round has a topic, from things you can\'t say to your boss or your ex to Disney and sports. See all 16 topics with example lines.',
-    schema: [{ '@context': 'https://schema.org', '@type': 'ItemList', name: 'unsays topics', itemListElement: ALL_TOPICS.map((t, i) => ({ '@type': 'ListItem', position: i + 1, name: topicTitle(t), url: `${site(env)}/topics/${topicSlug(t)}` })) },
-      crumbs(env, [['unsays', '/'], ['Topics', '/topics']])],
+    path: '/topics', title: 'Unsay topics: 15 things you can\'t unsay, plus General',
+    description: 'Every Unsay round has a topic, from things you can\'t say to your boss or your ex to Disney and sports. See all 16 topics with example lines.',
+    schema: [{ '@context': 'https://schema.org', '@type': 'ItemList', name: 'Unsay topics', itemListElement: ALL_TOPICS.map((t, i) => ({ '@type': 'ListItem', position: i + 1, name: topicTitle(t), url: `${site(env)}/topics/${topicSlug(t)}` })) },
+      crumbs(env, [['Unsay', '/'], ['Topics', '/topics']])],
     body: `<section class="hero"><span class="label">Topics</span><h1>Things you <span class="holo">can't unsay</span></h1>
       <p class="lede">Each round has a topic. The round winner picks the next one from three choices or General, and General comes up most often. There are <b>15 topics plus General</b>.</p></section>
       <section><h2>General</h2><div class="grid">${topicCard(GENERAL)}</div></section>
@@ -205,11 +205,11 @@ function topicPage(env, t) {
   const pack = t.id === 'general' ? 'every table' : `${TOPIC_PACKS[t.pack]} tables and tables with all topics`;
   const others = ALL_TOPICS.filter(x => x.id !== t.id).slice(0, 15);
   const words = t.w ? t.w.split(' ').slice(0, 12) : [];
-  const desc = `Play "${title}" in unsays, the free multiplayer acronym game. See example lines, how the topic works, and jump into a table.`;
+  const desc = `Play "${title}" in Unsay, the free multiplayer acronym game. See example lines, how the topic works, and jump into a table.`;
   return layout(env, {
-    path: `/topics/${topicSlug(t)}`, title: `${title}: unsays topic and example lines`, description: desc,
-    schema: [crumbs(env, [['unsays', '/'], ['Topics', '/topics'], [title, `/topics/${topicSlug(t)}`]]),
-      faqSchema([[`How does the "${title}" topic work in unsays?`, `When "${title}" comes up, everyone gets the same letters and writes a line for it, with each word starting with the next letter. It shows up on ${pack}. The round winner chooses it from three topics or General.`]])],
+    path: `/topics/${topicSlug(t)}`, title: `${title}: Unsay topic and example lines`, description: desc,
+    schema: [crumbs(env, [['Unsay', '/'], ['Topics', '/topics'], [title, `/topics/${topicSlug(t)}`]]),
+      faqSchema([[`How does the "${title}" topic work in Unsay?`, `When "${title}" comes up, everyone gets the same letters and writes a line for it, with each word starting with the next letter. It shows up on ${pack}. The round winner chooses it from three topics or General.`]])],
     body: `<nav class="crumbs" aria-label="Breadcrumb"><a href="/topics">Topics</a> / ${esc(t.subj)}</nav>
       <section class="hero"><span class="label">${t.id === 'general' ? 'The default topic' : esc(TOPIC_PACKS[t.pack])}</span><h1>${t.id === 'general' ? 'Things you <span class="holo">can\'t unsay</span>' : `${esc(t.pre.replace(/:$/, ''))} <span class="holo">${esc(t.subj)}</span>`}</h1>
       <p class="lede">${t.id === 'general'
@@ -227,7 +227,7 @@ function faqPage(env) {
   return layout(env, {
     path: '/faq', title: 'Unsay FAQ: Games Like Acrophobia, Answered',
     description: 'Is Unsay free? How many can play? Can you vote for yourself? Answers about the Acrophobia-style acronym game, Clean vs Adult tables and the Guild Pass.',
-    schema: [faqSchema(FAQ), crumbs(env, [['unsays', '/'], ['FAQ', '/faq']])],
+    schema: [faqSchema(FAQ), crumbs(env, [['Unsay', '/'], ['FAQ', '/faq']])],
     body: `<section class="hero"><span class="label">FAQ</span><h1>Questions, <span class="holo">answered</span></h1></section>
       <section>${FAQ.map(([q, a], i) => `<details${i < 3 ? ' open' : ''}><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}</section>
       <section class="cta"><a class="btn prime" href="/">Play free</a><a class="btn" href="/how-to-play">How to play</a></section>`,
@@ -294,9 +294,9 @@ async function leaderboard(env, DB, url) {
     : `<div class="empty">Nobody has scored yet this month. Points count when at least 3 real people play a round.</div>`;
   const tabs = [['players', 'Players'], ['guilds', 'Guilds'], ['gifted', 'Most gifted']];
   return layout(env, {
-    path: '/leaderboard' + (board === 'players' ? '' : `?board=${board}`), title: `unsays leaderboard: ${monthLabel(m)}`,
-    description: `The top unsays players, guilds and most-gifted writers for ${monthLabel(m)}. Boards reset on the 1st of every month.`,
-    noindex: board !== 'players', schema: [crumbs(env, [['unsays', '/'], ['Leaderboard', '/leaderboard']])],
+    path: '/leaderboard' + (board === 'players' ? '' : `?board=${board}`), title: `Unsay leaderboard: ${monthLabel(m)}`,
+    description: `The top Unsay players, guilds and most-gifted writers for ${monthLabel(m)}. Boards reset on the 1st of every month.`,
+    noindex: board !== 'players', schema: [crumbs(env, [['Unsay', '/'], ['Leaderboard', '/leaderboard']])],
     body: `<section class="hero"><span class="label">${esc(monthLabel(m))} season</span><h1>Global <span class="holo">leaderboard</span></h1>
       <p class="lede">Points from public tables, counted when <b>at least 3 real people</b> play the round. Bots never count. Every board resets on the 1st, and the top 3 go into the <a href="/hall-of-fame">Hall of Fame</a>.</p></section>
       <section><nav class="tabs" aria-label="Boards">${tabs.map(([k, l]) => `<a href="/leaderboard${k === 'players' ? '' : '?board=' + k}"${k === board ? ' aria-current="page"' : ''}>${l}</a>`).join('')}</nav>
@@ -315,9 +315,9 @@ async function hallOfFame(env, DB) {
       ${m.line ? `<p><span class="label">Most-gifted line</span><br>“${nameOf(m.line.line)}” by ${nameOf(m.line.name)} · 👑 ${m.line.value}</p>` : ''}</section>`).join('')
     : `<section class="card"><p>The first season is underway. On the 1st of next month, its top 3 players, top guild and most-gifted line will be sealed here for good.</p></section>`;
   return layout(env, {
-    path: '/hall-of-fame', title: 'unsays Hall of Fame: monthly champions',
-    description: 'Every month\'s top 3 unsays players, top guild and most-gifted line, kept forever. Champions earn a title that can\'t be bought.',
-    schema: [crumbs(env, [['unsays', '/'], ['Hall of Fame', '/hall-of-fame']])],
+    path: '/hall-of-fame', title: 'Unsay Hall of Fame: monthly champions',
+    description: 'Every month\'s top 3 Unsay players, top guild and most-gifted line, kept forever. Champions earn a title that can\'t be bought.',
+    schema: [crumbs(env, [['Unsay', '/'], ['Hall of Fame', '/hall-of-fame']])],
     body: `<section class="hero"><span class="label">Forever</span><h1>Hall of <span class="holo">Fame</span></h1>
       <p class="lede">When a month ends, its <b>top 3 players, top guild and most-gifted line</b> go here for good. Each champion gets a free title, like "Champion · ${esc(monthLabel(monthKey()))}", that no pack can buy.</p></section>${body}`,
   });
@@ -326,12 +326,12 @@ async function hallOfFame(env, DB) {
 function guildPass(env) {
   const m = GUILD_PASS.monthly, y = GUILD_PASS.yearly;
   return layout(env, {
-    path: '/guild-pass', title: 'unsays Guild Pass: your crew\'s own table and leaderboard',
+    path: '/guild-pass', title: 'Unsay Guild Pass: your crew\'s own table and leaderboard',
     description: 'For $2.99 a month, the Guild Pass gives your crew a members-only 14-seat table, a guild leaderboard and Hall of Fame, a guild tag on every member, and no ads for the owner.',
-    schema: [{ '@context': 'https://schema.org', '@type': 'Product', name: 'unsays Guild Pass', description: 'A members-only 14-seat table, guild leaderboard, guild tag and no ads for the owner.', image: site(env) + '/og.png', brand: { '@type': 'Brand', name: 'unsays' },
+    schema: [{ '@context': 'https://schema.org', '@type': 'Product', name: 'Unsay Guild Pass', description: 'A members-only 14-seat table, guild leaderboard, guild tag and no ads for the owner.', image: site(env) + '/og.png', brand: { '@type': 'Brand', name: 'Unsay' },
       offers: [m, y].map(p => ({ '@type': 'Offer', price: (p.price / 100).toFixed(2), priceCurrency: 'USD', availability: 'https://schema.org/InStock', url: site(env) + '/guild-pass',
         priceSpecification: { '@type': 'UnitPriceSpecification', price: (p.price / 100).toFixed(2), priceCurrency: 'USD', billingDuration: 1, billingIncrement: 1, unitCode: p.interval === 'month' ? 'MON' : 'ANN' } })) },
-      faqSchema(FAQ.filter(([q]) => /Guild Pass|free\?/.test(q))), crumbs(env, [['unsays', '/'], ['Guild Pass', '/guild-pass']])],
+      faqSchema(FAQ.filter(([q]) => /Guild Pass|free\?/.test(q))), crumbs(env, [['Unsay', '/'], ['Guild Pass', '/guild-pass']])],
     body: `<section class="hero"><span class="label">Guild Pass</span><h1>Your crew. <span class="holo">Your table.</span></h1>
       <p class="lede">The owner pays, and everyone they invite gets the perks. <b>Joining a guild is always free.</b></p></section>
       <section class="plan">
@@ -354,10 +354,10 @@ function shop(env) {
   const price = p => p.price ? money(p.price) : `${GIFTS.gift.icon} ${p.xcost}<small> received gifts</small>`;
   const group = (kinds, title, note) => `<section><h2>${title}</h2>${note ? `<p class="muted">${note}</p>` : ''}<div class="grid">${PACKS.filter(p => kinds.includes(p.kind)).map(p => `<article class="card"><h3>${esc(p.name)}</h3><div class="price">${price(p)}</div><p class="muted">${esc(p.blurb)}</p>${p.emoji ? `<div class="chips">${p.emoji.map(e => `<span class="chip">${e}</span>`).join('')}</div>` : ''}</article>`).join('')}</div></section>`;
   return layout(env, {
-    path: '/shop', title: 'unsays shop: flair, emoji and gift packs',
-    description: 'Make your name stand out, react with emoji and reward the best lines. unsays flair, emoji and gift packs are one-time purchases and never add points.',
-    schema: [{ '@context': 'https://schema.org', '@type': 'ItemList', name: 'unsays shop', itemListElement: PACKS.filter(p => p.price).map((p, i) => ({ '@type': 'ListItem', position: i + 1, item: { '@type': 'Product', name: `unsays ${p.name}`, description: p.blurb, offers: { '@type': 'Offer', price: (p.price / 100).toFixed(2), priceCurrency: 'USD' } } })) },
-      crumbs(env, [['unsays', '/'], ['Shop', '/shop']])],
+    path: '/shop', title: 'Unsay shop: flair, emoji and gift packs',
+    description: 'Make your name stand out, react with emoji and reward the best lines. Unsay flair, emoji and gift packs are one-time purchases and never add points.',
+    schema: [{ '@context': 'https://schema.org', '@type': 'ItemList', name: 'Unsay shop', itemListElement: PACKS.filter(p => p.price).map((p, i) => ({ '@type': 'ListItem', position: i + 1, item: { '@type': 'Product', name: `Unsay ${p.name}`, description: p.blurb, offers: { '@type': 'Offer', price: (p.price / 100).toFixed(2), priceCurrency: 'USD' } } })) },
+      crumbs(env, [['Unsay', '/'], ['Shop', '/shop']])],
     body: `<section class="hero"><span class="label">Shop</span><h1>Bragging rights, <span class="holo">for sale</span></h1>
       <p class="lede">Packs are bought once and kept forever. <b>None of them add points or votes.</b></p>
       <div class="cta"><a class="btn prime" href="/#store">Open the store</a></div></section>
@@ -376,22 +376,22 @@ async function guildPage(env, DB, slug) {
   const months = await hall(DB, 'g:' + g.id);
   const members = (await DB.prepare('SELECT COUNT(*) AS n FROM players WHERE guild_id = ?').bind(g.id).first()).n;
   return layout(env, {
-    path: `/g/${slug}`, title: `[${g.tag}] ${clean(g.name, 'clean')}: unsays guild`,
-    description: `The ${clean(g.name, 'clean')} guild on unsays: ${members} members, monthly guild leaderboard and Hall of Fame.`,
-    schema: [crumbs(env, [['unsays', '/'], ['Leaderboard', '/leaderboard?board=guilds'], [g.name, `/g/${slug}`]])],
+    path: `/g/${slug}`, title: `[${g.tag}] ${clean(g.name, 'clean')}: Unsay guild`,
+    description: `The ${clean(g.name, 'clean')} guild on Unsay: ${members} members, monthly guild leaderboard and Hall of Fame.`,
+    schema: [crumbs(env, [['Unsay', '/'], ['Leaderboard', '/leaderboard?board=guilds'], [g.name, `/g/${slug}`]])],
     body: `<section class="hero"><span class="label">Guild · ${members} member${members === 1 ? '' : 's'}</span><h1>${logoImg(g, 56)} <span class="holo">[${esc(g.tag)}]</span> ${nameOf(g.name)}</h1>
       <p class="lede">Points scored at the guild's own table, ${esc(monthLabel(m))}.</p></section>
       <section><div class="board">${rows.length ? rows.map((r, i) => `<div class="row"><span class="pos">${i + 1}</span><span class="who">${orb(r.hue)}${nameOf(r.name)}<small>${r.gifts ? '👑 ' + r.gifts : ''}</small></span><span class="pts">${r.points}</span></div>`).join('') : '<div class="empty">No games at the guild table yet this month.</div>'}</div></section>
       ${months.length ? `<section><h2>Guild Hall of Fame</h2>${months.map(mo => `<div class="card"><span class="label">${esc(mo.label)}</span><div>${mo.players.map(r => `${['🥇', '🥈', '🥉'][r.rank - 1]} ${nameOf(r.name)} · ${r.value}`).join('<br>')}</div></div>`).join('')}</section>` : ''}
-      <section class="cta"><a class="btn prime" href="/">Play unsays</a><a class="btn" href="/guild-pass">Start your own guild</a></section>`,
+      <section class="cta"><a class="btn prime" href="/">Play Unsay</a><a class="btn" href="/guild-pass">Start your own guild</a></section>`,
   });
 }
 
 async function joinPage(env, DB, code) {
   const g = DB && await DB.prepare('SELECT name, tag, pass_until FROM guilds WHERE invite = ?').bind(code).first();
   return layout(env, {
-    path: `/join/${code}`, title: g ? `Join [${g.tag}] ${g.name} on unsays` : 'Invite expired · unsays', noindex: true,
-    description: 'You were invited to an unsays guild.',
+    path: `/join/${code}`, title: g ? `Join [${g.tag}] ${g.name} on Unsay` : 'Invite expired · Unsay', noindex: true,
+    description: 'You were invited to an Unsay guild.',
     body: g ? `<section class="hero"><span class="label">Guild invite</span><h1>${logoImg(g, 56)} Join <span class="holo">[${esc(g.tag)}]</span> ${nameOf(g.name)}</h1>
       <p class="lede">Members wear the guild tag at every table, play at the guild's own table and climb the guild leaderboard. <b>Joining is free.</b></p>
       ${guildActive(g) ? '' : '<p class="notice">This guild\'s table is paused until the owner renews the Guild Pass. You can still join.</p>'}
@@ -399,7 +399,7 @@ async function joinPage(env, DB, code) {
       <script>document.getElementById('join').onclick=async()=>{const m=document.getElementById('msg');m.textContent='Joining…';
         try{const r=await fetch('/api/guild/join',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code:${JSON.stringify(code)}})});const j=await r.json();
         if(!r.ok){m.textContent=j.error||'That didn\\'t work.';return;}location.href='/#guild';}catch(e){m.textContent='Could not reach the server.';}};</script>`
-      : `<section class="hero"><h1>That invite has <span class="holo">expired</span></h1><p class="lede">Ask the guild owner for a new link.</p><div class="cta"><a class="btn prime" href="/">Play unsays</a></div></section>`,
+      : `<section class="hero"><h1>That invite has <span class="holo">expired</span></h1><p class="lede">Ask the guild owner for a new link.</p><div class="cta"><a class="btn prime" href="/">Play Unsay</a></div></section>`,
   });
 }
 
@@ -441,20 +441,20 @@ function legal(env, path) {
       <h2>Playing</h2><ul class="list"><li>You must be 13 or older to play, and 18 or older for Adult language tables.</li>
         <li>Don't post hate, threats, other people's private information, or anything illegal. We can remove names, lines, guilds or accounts that do.</li>
         <li>Don't cheat, script the game, or farm leaderboard points. We can reset scores we believe were not earned fairly.</li></ul>
-      <h2>Purchases</h2><ul class="list"><li>Flair, emoji and gift packs are one-time purchases of digital items for use in unsays. They have no cash value and can't be transferred. Gift drop gifts arrive one day at a time, and days you don't play aren't carried over. Received gifts can only be spent in the Gift Exchange.</li>
+      <h2>Purchases</h2><ul class="list"><li>Flair, emoji and gift packs are one-time purchases of digital items for use in Unsay. They have no cash value and can't be transferred. Gift drop gifts arrive one day at a time, and days you don't play aren't carried over. Received gifts can only be spent in the Gift Exchange.</li>
         <li>The Guild Pass renews every month or year until you cancel. You can cancel any time from your guild settings, and it stays active until the end of the period you paid for.</li>
         <li>If something you bought doesn't work, email <a href="mailto:${contact}">${contact}</a> within 14 days and we'll fix it or refund you.</li>
         <li>Gifts that have been sent can't be refunded.</li></ul>
-      <h2>The service</h2><p>unsays is provided as is. We may change or end features, including leaderboards and packs. If we shut down a paid feature, we'll refund the unused part of any Guild Pass.</p>
+      <h2>The service</h2><p>Unsay is provided as is. We may change or end features, including leaderboards and packs. If we shut down a paid feature, we'll refund the unused part of any Guild Pass.</p>
       <h2>Contact</h2><p><a href="mailto:${contact}">${contact}</a></p></section>`,
   });
 }
 
 function notFound(env) {
   return layout(env, {
-    path: '/404', title: 'Page not found · unsays', noindex: true, status: 404, description: 'That page doesn\'t exist.',
+    path: '/404', title: 'Page not found · Unsay', noindex: true, status: 404, description: 'That page doesn\'t exist.',
     body: `<section class="hero"><span class="label">404</span><h1>Some things <span class="holo">can't be found</span></h1><p class="lede">That page doesn't exist. The game is still running, though.</p>
-      <div class="cta"><a class="btn prime" href="/">Play unsays</a><a class="btn" href="/topics">Topics</a></div></section>`,
+      <div class="cta"><a class="btn prime" href="/">Play Unsay</a><a class="btn" href="/topics">Topics</a></div></section>`,
   });
 }
 
@@ -507,7 +507,7 @@ export async function sitemap(env, DB) {
 
 export function llms(env) {
   const s = site(env);
-  return `# unsays
+  return `# Unsay
 
 > Unsay (unsays.com) is a free multiplayer acronym party game in the browser, in the style of Acrophobia (not affiliated), made by Tenacié LLC. Everyone gets the same 3 to 7 letter acronym and a topic, writes a line in 30 seconds (Turbo) or 60 seconds (Classic), then votes blind for the best line; you can't vote for your own. +1 per vote, +1 per letter for the round winner, +2 speed bonus, +1 for voting for the winner, 0 if you don't vote. The round winner picks the next topic. First to 30 points (15 on Sprint tables) sends the top two into a three-round face-off. Up to 14 players per table; bots fill seats up to 5. Clean tables filter rude words; Adult tables are 18+. Optional purchases are cosmetic and never add points.
 
