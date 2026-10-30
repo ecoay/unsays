@@ -69,6 +69,7 @@ const HOWTO = [
 /* ---------- layout ---------- */
 
 const NAV = [['/how-to-play', 'How to play'], ['/topics', 'Topics'], ['/leaderboard', 'Leaderboard'], ['/hall-of-fame', 'Hall of Fame'], ['/guild-pass', 'Guild Pass'], ['/shop', 'Shop'], ['/faq', 'FAQ']];
+const FOOTER_LINKS = [['/about', 'About'], ['/contact', 'Contact'], ['/privacy', 'Privacy'], ['/terms', 'Terms']];
 
 function layout(env, { path, title, description, body, schema = [], noindex = false, status = 200, ogType = 'website' }) {
   const url = site(env) + path;
@@ -82,14 +83,15 @@ function layout(env, { path, title, description, body, schema = [], noindex = fa
 <meta name="description" content="${esc(description)}">
 <link rel="canonical" href="${esc(url)}">
 ${noindex ? '<meta name="robots" content="noindex">' : '<meta name="robots" content="index, follow, max-image-preview:large">'}
-<meta property="og:site_name" content="unsays">
+<meta name="google-adsense-account" content="ca-pub-8081136929405133">
+<meta property="og:site_name" content="Unsay">
 <meta property="og:type" content="${ogType}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${esc(url)}">
 <meta property="og:image" content="${og}">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="unsays: things you can't unsay">
+<meta property="og:image:alt" content="Unsay: things you can't unsay">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(title)}">
 <meta name="twitter:description" content="${esc(description)}">
@@ -107,7 +109,7 @@ ${schema.map(ld).join('\n')}
 <body>
 <div class="wrap">
 <header class="top">
-  <a class="brand" href="/">unsays<span>.</span></a>
+  <a class="brand" href="/">Unsay<span>.</span></a>
   <nav aria-label="Site">${NAV.map(([h, l]) => `<a href="${h}"${path === h || (h !== '/' && path.startsWith(h + '/')) ? ' aria-current="page"' : ''}>${l}</a>`).join('')}</nav>
   <a class="btn prime small" href="/">Play free</a>
 </header>
@@ -115,8 +117,8 @@ ${schema.map(ld).join('\n')}
 ${body}
 </main>
 <footer>
-  <nav aria-label="More">${NAV.map(([h, l]) => `<a href="${h}">${l}</a>`).join('')}<a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav>
-  <p>unsays is a free multiplayer acronym party game in your browser. Things you can't unsay. Contact: <a href="mailto:${esc(env.CONTACT_EMAIL || 'hello@unsays.com')}">${esc(env.CONTACT_EMAIL || 'hello@unsays.com')}</a></p>
+  <nav aria-label="More">${NAV.map(([h, l]) => `<a href="${h}">${l}</a>`).join('')}${FOOTER_LINKS.map(([h, l]) => `<a href="${h}">${l}</a>`).join('')}</nav>
+  <p>Unsay is a free multiplayer acronym party game in your browser. Things you can't unsay. Contact: <a href="/contact">Contact us</a> or <a href="mailto:${esc(env.CONTACT_EMAIL || 'hello@unsays.com')}">${esc(env.CONTACT_EMAIL || 'hello@unsays.com')}</a></p>
 </footer>
 </div>
 </body>
@@ -148,8 +150,8 @@ const tag = t => t ? `<span class="gtag">[${esc(t)}]</span>` : '';
 
 function howToPlay(env) {
   return layout(env, {
-    path: '/how-to-play', title: 'How to play unsays: rules, scoring and tips',
-    description: 'Learn to play unsays in a minute. Turn random letters into a line that fits the topic, vote for the funniest, and score with votes, win and speed bonuses.',
+    path: '/how-to-play', title: 'How to Play Unsay: Rules, Timers, Scoring',
+    description: 'Unsay rules: 3 to 7 letter acronyms, 30 or 60 second rounds, blind voting, +1 per vote, winner picks the topic, first to 30 starts the face-off.',
     schema: [
       { '@context': 'https://schema.org', '@type': 'HowTo', name: 'How to play unsays', totalTime: 'PT15M', step: HOWTO.map(([name, text], i) => ({ '@type': 'HowToStep', position: i + 1, name, text })) },
       faqSchema(FAQ.filter(([q]) => /scoring|long|many/i.test(q))), crumbs(env, [['unsays', '/'], ['How to play', '/how-to-play']]),
@@ -223,12 +225,59 @@ function topicPage(env, t) {
 
 function faqPage(env) {
   return layout(env, {
-    path: '/faq', title: 'unsays FAQ: how it works, pricing, leaderboards and more',
-    description: 'Answers about unsays: how to play, whether it\'s free, how scoring and leaderboards work, how many people can play, and what the Guild Pass includes.',
+    path: '/faq', title: 'Unsay FAQ: Games Like Acrophobia, Answered',
+    description: 'Is Unsay free? How many can play? Can you vote for yourself? Answers about the Acrophobia-style acronym game, Clean vs Adult tables and the Guild Pass.',
     schema: [faqSchema(FAQ), crumbs(env, [['unsays', '/'], ['FAQ', '/faq']])],
     body: `<section class="hero"><span class="label">FAQ</span><h1>Questions, <span class="holo">answered</span></h1></section>
       <section>${FAQ.map(([q, a], i) => `<details${i < 3 ? ' open' : ''}><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}</section>
       <section class="cta"><a class="btn prime" href="/">Play free</a><a class="btn" href="/how-to-play">How to play</a></section>`,
+  });
+}
+
+function about(env) {
+  return layout(env, {
+    path: '/about', title: 'About Unsay: Why We Rebuilt Acrophobia',
+    description: 'Unsay is a free multiplayer acronym game from Tenacié LLC, built to bring back the write-a-line-and-vote fun of the 90s classic. No paid wins.',
+    schema: [crumbs(env, [['Unsay', '/'], ['About', '/about']])],
+    body: `<section class="hero"><span class="label">About</span><h1>About <span class="holo">Unsay</span></h1>
+      <p class="lede">Unsay is a free multiplayer acronym game from Tenacié LLC. It exists because Acrophobia, the late-90s game where a room full of strangers turned random letters into phrases and voted on the best, basically disappeared. Nothing since has scratched the same itch.</p></section>
+      <section><h2>The longer version</h2>
+      <p>You know the laugh you get when somebody takes three random letters and turns them into a sentence that should not exist? Not a joke printed on a card. Not a punchline someone wrote years ago. A thing your friend came up with ten seconds ago, under a clock, that's both stupid and perfect.</p>
+      <p>That laugh is the whole point of Unsay.</p>
+      <p>Most party games hand you the jokes. You pick a card, the card is funny, you get the credit. Fine. Unsay flips it. You get letters and a topic. You write the line. Every answer is original because it came out of somebody's head mid-round.</p>
+      <p>Then the lines show up with no names on them and everybody votes. No algorithm decides what's funny. People do. You can't vote for yourself, and you can't buy points. If you win, you earned it.</p></section>
+      <section><h2>What we built in</h2><ul class="list">
+        <li><b>Topics that bite.</b> "Things you can't say to your boss." "Things you can't say on a first date." "Things you can't say to airport security." The letters are random. The topic gives them teeth.</li>
+        <li><b>A real ending.</b> First to the target score sets up a three-round face-off between the top two. The rest of the room decides the champion.</li>
+        <li><b>Clean and Adult tables.</b> Clean tables star out rude words automatically. Adult tables are 18+.</li>
+        <li><b>Bots so you never wait.</b> Empty seats fill with bots up to five players, and they leave the moment real people show up.</li>
+        <li><b>Leaderboards that reset monthly,</b> plus a Hall of Fame for each month's top players, top guild and most-gifted line.</li>
+        <li><b>A shop that can't buy wins.</b> Name styles, win animations, emoji and gifts. None of it adds points or votes.</li></ul></section>
+      <section><h2>Who's behind it</h2>
+      <p>Unsay is built and owned by Tenacié LLC, a small independent company. It's small on purpose: decisions get made fast, feedback gets read by the person who builds the game, and when something breaks, that same person fixes it.</p></section>
+      <section class="cta"><h2>Talk to us</h2><p>Pack ideas, bug reports, complaints about losing to your little brother: <a href="/contact">Contact</a> or ${esc(env.CONTACT_EMAIL || 'hello@unsays.com')}.</p>
+      <a class="btn prime" href="/">Play free</a><a class="btn" href="/contact">Contact</a></section>`,
+  });
+}
+
+function contact(env) {
+  const contact = esc(env.CONTACT_EMAIL || 'hello@unsays.com');
+  return layout(env, {
+    path: '/contact', title: 'Contact Unsay | Tenacié LLC',
+    description: 'Report a bug, pitch a topic, fix a purchase or delete your data. Email hello@unsays.com and a real person at Tenacié LLC will answer.',
+    schema: [crumbs(env, [['Unsay', '/'], ['Contact', '/contact']])],
+    body: `<section class="hero"><span class="label">Contact</span><h1>Contact <span class="holo">Unsay</span></h1>
+      <p class="lede">Got a bug, a topic idea, a business question, or a grudge about the last face-off? We read everything.</p>
+      <p><b>Email:</b> <a href="mailto:${contact}">${contact}</a><br><b>Company:</b> Tenacié LLC</p></section>
+      <section><h2>What to send</h2><ul class="list">
+        <li><b>Bugs:</b> your device and browser, the table you were at, what you tapped and what went wrong. A screenshot helps a lot.</li>
+        <li><b>Topic ideas:</b> the topic ("Things you can't say to...") and three acronyms with your best lines. Good ones might ship.</li>
+        <li><b>Purchase problems:</b> if something you bought doesn't work, email within 14 days and we'll fix it or refund you. Include your player name.</li>
+        <li><b>Delete my data:</b> email from the address on your account, or tell us your player name, and we'll delete your account and records. See <a href="/privacy">Privacy</a>.</li>
+        <li><b>Reporting a player:</b> the table name, the player name and what happened. Hate, threats and other people's private info get removed.</li>
+        <li><b>Press and partnerships:</b> who you are and what you have in mind.</li></ul></section>
+      <section><h2>What to expect</h2><p>Replies come from a real person, not a ticket robot. It's a small shop, so give us a few days.</p></section>
+      <section class="cta"><a class="btn prime" href="/">Play free</a><a class="btn" href="mailto:${contact}">Email us</a></section>`,
   });
 }
 
@@ -357,23 +406,37 @@ async function joinPage(env, DB, code) {
 function legal(env, path) {
   const contact = esc(env.CONTACT_EMAIL || 'hello@unsays.com');
   if (path === '/privacy') return layout(env, {
-    path, title: 'Privacy · unsays', description: 'What unsays collects, why, and how to delete it.',
-    body: `<section class="legal"><span class="label">Last updated Oct 27, 2026</span><h1>Privacy</h1>
-      <p>unsays is a browser game. This page says what we keep and why.</p>
+    path, title: 'Privacy Policy | Unsay', description: 'What Unsay keeps and why, how Google ad cookies work here, how to opt out of personalized ads, and how to delete your account. From Tenacié LLC.',
+    body: `<section class="legal"><span class="label">Last updated Oct 30, 2026</span><h1>Privacy</h1>
+      <p>Unsay is a browser game run by Tenacié LLC. This page says what we keep and why. Plain English, no tricks.</p>
       <h2>What we collect</h2><ul class="list">
-        <li><b>Your player name and color</b>, which other players see.</li>
+        <li><b>Your player name and color,</b> which other players see.</li>
         <li><b>A sign-in cookie</b> that keeps your guest or signed-in account on this device.</li>
-        <li><b>Your email address or Google account ID</b>, only if you sign in, so your account works on other devices.</li>
-        <li><b>Game records:</b> points, wins, gifts sent and received, guild membership and what you've bought.</li>
+        <li><b>Your email address or Google account ID,</b> only if you sign in, so your account works on other devices.</li>
+        <li><b>Game records:</b> points, wins, titles, daily check-ins and streaks, gifts sent and received, guild membership, and what you've bought.</li>
         <li><b>Lines and chat</b> while a game is running. We don't keep chat after the table closes. Lines that receive gifts are kept for the leaderboard and Hall of Fame.</li>
         <li><b>Payments</b> go through Stripe. We never see or store your card number.</li>
+        <li><b>Settings saved in your browser</b> (local storage), like your name and color, so the game remembers them.</li>
         <li>Our host, Cloudflare, keeps standard request logs for security and debugging.</li></ul>
-      <h2>What we don't do</h2><p>We don't sell your data, and we don't use ad trackers today. If we add ads later, we'll update this page first and say so in the game.</p>
+      <p>We don't sell your personal information.</p>
+      <h2>Advertising and cookies (Google AdSense)</h2>
+      <p>We use Google AdSense to show ads on some pages and tables, which helps keep Unsay free.</p><ul class="list">
+        <li>Third-party vendors, including Google, use cookies to serve ads based on your prior visits to this website or other websites.</li>
+        <li>Google's use of advertising cookies enables it and its partners to serve ads to you based on your visit to this site and/or other sites on the Internet.</li>
+        <li>You can opt out of personalized advertising in Google Ads Settings: <a href="https://adssettings.google.com">adssettings.google.com</a></li>
+        <li>You can also opt out of some third-party vendors' use of cookies for personalized advertising at <a href="https://www.aboutads.info/choices">aboutads.info/choices</a></li>
+        <li>How Google uses information from sites that use its services: <a href="https://policies.google.com/technologies/partner-sites">policies.google.com/technologies/partner-sites</a></li>
+        <li>Other third-party ad vendors or ad networks may also use cookies to serve ads on our site.</li>
+        <li>Visitors in the EEA, the UK and Switzerland are asked for consent through a Google-certified consent tool before personalized ads load.</li>
+        <li>Ads never load at Adult language tables (like After Dark and The Breakup Booth) or at guild tables, and Guild Pass owners don't see ads anywhere.</li></ul>
+      <h2>Your choices</h2><p>Block or delete cookies in your browser settings, use the opt-out links above, or ask us to delete your data. Depending on where you live, including California, you may have rights to know, delete and opt out. We honor those requests through the same email.</p>
       <h2>Deleting your data</h2><p>Email <a href="mailto:${contact}">${contact}</a> from the address on your account, or tell us your player name, and we'll delete your account and records.</p>
-      <h2>Children</h2><p>unsays is for players 13 and older. Adult language tables are for players 18 and older.</p></section>`,
+      <h2>Kids</h2><p>You must be 13 or older to play. We don't knowingly collect personal information from children under 13. If you think a child has given us data, email us and we'll delete it.</p>
+      <h2>Changes</h2><p>If this policy changes, we'll update the date at the top.</p>
+      <h2>Contact</h2><p>Tenacié LLC, <a href="mailto:${contact}">${contact}</a></p></section>`,
   });
   return layout(env, {
-    path, title: 'Terms · unsays', description: 'The rules for playing and buying on unsays.',
+    path, title: 'Terms of Use | Unsay', description: 'Rules for playing and buying on Unsay: age limits, fair play, purchases and refunds, the Guild Pass, and ads. Run by Tenacié LLC.',
     body: `<section class="legal"><span class="label">Last updated Oct 27, 2026</span><h1>Terms</h1>
       <h2>Playing</h2><ul class="list"><li>You must be 13 or older to play, and 18 or older for Adult language tables.</li>
         <li>Don't post hate, threats, other people's private information, or anything illegal. We can remove names, lines, guilds or accounts that do.</li>
@@ -402,6 +465,8 @@ export async function page(path, url, env, DB) {
   const tm = path.match(/^\/topics\/([a-z-]+)$/);
   if (tm) { const t = ALL_TOPICS.find(x => topicSlug(x) === tm[1]); return t ? topicPage(env, t) : notFound(env); }
   if (path === '/faq') return faqPage(env);
+  if (path === '/about') return about(env);
+  if (path === '/contact') return contact(env);
   if (path === '/leaderboard') return leaderboard(env, DB, url);
   if (path === '/hall-of-fame') return hallOfFame(env, DB);
   if (path === '/guild-pass') return guildPass(env);
@@ -424,6 +489,7 @@ export function robots(env, indexable) {
 
 const STATIC_PATHS = [['/', 'daily', '1.0'], ['/how-to-play', 'monthly', '0.9'], ['/topics', 'monthly', '0.8'], ['/faq', 'monthly', '0.8'],
   ['/leaderboard', 'hourly', '0.7'], ['/hall-of-fame', 'monthly', '0.6'], ['/guild-pass', 'monthly', '0.7'], ['/shop', 'monthly', '0.6'],
+  ['/about', 'monthly', '0.6'], ['/contact', 'yearly', '0.5'],
   ['/privacy', 'yearly', '0.2'], ['/terms', 'yearly', '0.2']];
 
 export async function sitemap(env, DB) {
@@ -443,21 +509,14 @@ export function llms(env) {
   const s = site(env);
   return `# unsays
 
-> unsays is a free multiplayer acronym party game that runs in the browser, in the style of Acrophobia. Everyone at a table gets the same random letters, writes a phrase whose words start with those letters, and votes for the funniest line. The tagline is "Things you can't unsay": each round has a topic, such as things you can't say to your boss.
-
-Key facts:
-- Free to play at ${s}, with no download. Works on phones and computers. Guests can play right away.
-- Up to 14 players per table. Bots fill seats up to 5 players so a game can always start.
-- Scoring: 1 point per vote, a win bonus of 1 point per letter, +2 for the first line to get a vote, +1 for voting for the winner. Skipping the vote forfeits that round's points.
-- First to 30 points (15 on Sprint tables) plays a 3-round face-off for the win. A Turbo game takes about 10 to 15 minutes.
-- 15 topics plus General. The round winner picks the next topic.
-- Monthly global leaderboard (only rounds with at least 3 real people count) and a permanent Hall of Fame.
-- Optional purchases, none of which add points: Guild Pass $2.99/month or $24/year (members-only 14-seat guild table, guild leaderboard, guild tag, no ads for the owner), flair packs $1.99 to $4.99, emoji packs $1.99 to $6.99, gift packs $1.99 to $9.99, and a monthly gift drop at $2.99 (2 gifts a day for 30 days). Gifts a player receives can be spent in the Gift Exchange on packs and exchange-only titles.
+> Unsay (unsays.com) is a free multiplayer acronym party game in the browser, in the style of Acrophobia (not affiliated), made by Tenacié LLC. Everyone gets the same 3 to 7 letter acronym and a topic, writes a line in 30 seconds (Turbo) or 60 seconds (Classic), then votes blind for the best line; you can't vote for your own. +1 per vote, +1 per letter for the round winner, +2 speed bonus, +1 for voting for the winner, 0 if you don't vote. The round winner picks the next topic. First to 30 points (15 on Sprint tables) sends the top two into a three-round face-off. Up to 14 players per table; bots fill seats up to 5. Clean tables filter rude words; Adult tables are 18+. Optional purchases are cosmetic and never add points.
 
 ## Pages
 - [How to play](${s}/how-to-play): rules, scoring, timing and tips
 - [Topics](${s}/topics): all 16 topics with example lines
 - [FAQ](${s}/faq): common questions with short answers
+- [About](${s}/about): why Unsay exists and who makes it
+- [Contact](${s}/contact): ${env.CONTACT_EMAIL || 'hello@unsays.com'}
 - [Leaderboard](${s}/leaderboard): this month's top players and guilds
 - [Hall of Fame](${s}/hall-of-fame): past monthly champions
 - [Guild Pass](${s}/guild-pass): what the subscription includes
