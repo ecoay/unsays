@@ -175,6 +175,12 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     const path = url.pathname;
+    // Canonical origin first: http -> https and www -> apex, before anything else runs.
+    const canon = canonicalHost(env);
+    const isHttp = url.protocol === 'http:' || req.headers.get('x-forwarded-proto') === 'http';
+    const isWww = url.hostname === 'www.' + canon;
+    if ((isHttp && url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') || isWww)
+      return Response.redirect(`https://${isWww ? canon : url.hostname}${path}${url.search}`, 301);
     const DB = await Promise.resolve(db(env)).catch(e => { console.error('db', e); return null; });
 
     const logo = path.match(LOGO_PATH);
