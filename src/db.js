@@ -43,11 +43,14 @@ const COLUMNS = [
   'ALTER TABLE players ADD COLUMN best_streak INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE guilds ADD COLUMN icon TEXT',
   'ALTER TABLE guilds ADD COLUMN color TEXT',
+  // The player's RookieGamers id, for players who come in through the portal.
+  'ALTER TABLE players ADD COLUMN rg_sub TEXT',
 ];
 
 export async function migrate(DB) {
   await DB.batch(SCHEMA.map(s => DB.prepare(s)));
   for (const c of COLUMNS) await DB.prepare(c).run().catch(e => { if (!/duplicate column/i.test(String(e))) throw e; });
+  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS players_rg ON players(rg_sub)').run();
 }
 
 let ready = null;

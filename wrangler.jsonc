@@ -22,8 +22,10 @@
   // 00:10 UTC on the 1st: seal last month's boards into the Hall of Fame.
   "triggers": { "crons": ["10 0 1 * *"] },
   // Secrets (set in the dashboard, not here): STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
-  // GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, RESEND_API_KEY. Each feature turns on when its keys exist.
-  "vars": { "SITE_URL": "https://unsays.com", "EMAIL_FROM": "unsays <login@unsays.com>", "CONTACT_EMAIL": "hello@unsays.com" },
+  // GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, RESEND_API_KEY, and RG_SERVER_KEY (the RookieGamers server
+  // key for unsays, so ranked points reach the portal's board). Each feature turns on when its keys exist.
+  // RG_URL is the RookieGamers portal unsays runs inside; leave it empty to switch the hookup off.
+  "vars": { "SITE_URL": "https://unsays.com", "EMAIL_FROM": "unsays <login@unsays.com>", "CONTACT_EMAIL": "hello@unsays.com", "RG_URL": "https://rookiegamers.com" },
   "observability": { "enabled": true },
   // Pull request previews (Workers Builds runs `wrangler preview`). They get the game and the
   // content pages but no database, so preview traffic never touches real accounts or purchases.

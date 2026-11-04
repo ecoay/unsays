@@ -4,6 +4,7 @@ import { db, profile, getPlayer, setEquip, exchange, checkIn, newId, now, monthK
 import { sessionPlayer, ensurePlayer, signOut, providers, googleStart, googleCallback, emailStart, emailVerify } from './auth.js';
 import { stripeReady, checkout, portal, verifySignature, handleEvent } from './stripe.js';
 import { page, robots, sitemap, llms, llmsFull, canonicalHost } from './pages.js';
+import { rgPlayer } from './rookie.js';
 import { ICONS, DEFAULT_ICON } from '../public/guild-icons.js';
 import { GUILD_COLORS, DEFAULT_COLOR, logoSVG } from '../public/guild-logo.js';
 
@@ -25,11 +26,13 @@ const lobby = env => env.LOBBY.get(env.LOBBY.idFromName('main'));
 const syncLobby = env => lobby(env).fetch('https://lobby/internal/guilds/sync', { method: 'POST' });
 const cleanText = (s, n) => String(s || '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, n);
 
-// Pass the request on with x-player set from the session cookie (never from the client).
-async function withPlayer(req, DB) {
+// Pass the request on with x-player set from the session cookie (never from the client). Inside
+// the RookieGamers portal the cookie is blocked, so a signed portal token (?rgt=) is used instead.
+async function withPlayer(req, DB, env) {
   const h = new Headers(req.headers);
   h.delete('x-player');
-  const pid = DB ? await sessionPlayer(DB, req) : null;
+  const rgt = new URL(req.url).searchParams.get('rgt');
+  const pid = !DB ? null : (rgt && env && await rgPlayer(DB, env, rgt).catch(e => { console.error('rg', e); return null; })) || await sessionPlayer(DB, req);
   if (pid) h.set('x-player', pid);
   return new Request(req, { headers: h });
 }
@@ -188,11 +191,11 @@ export default {
       if (!ICONS[logo[1]] || !GUILD_COLORS[logo[2]]) return new Response('Not found', { status: 404 });
       return new Response(logoSVG(ICONS[logo[1]], logo[2]), { headers: { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=31536000, immutable' } });
     }
-    if (path === '/ws/lobby' || path.startsWith('/api/tables')) return lobby(env).fetch(await withPlayer(req, DB));
+    if (path === '/ws/lobby' || path.startsWith('/api/tables')) return lobby(env).fetch(await withPlayer(req, DB, env));
     const m = path.match(TABLE_PATH);
     if (m) {
       if (req.headers.get('Upgrade') !== 'websocket') return new Response('Expected WebSocket', { status: 426 });
-      return env.TABLE.get(env.TABLE.idFromName(m[1])).fetch(await withPlayer(req, DB));
+      return env.TABLE.get(env.TABLE.idFromName(m[1])).fetch(await withPlayer(req, DB, env));
     }
     if (path.startsWith('/api/')) {
       if (!DB) return json({ error: 'Accounts are offline.' }, 503);
@@ -206,6 +209,8 @@ export default {
     const canonical = canonicalHost(env);
     if (url.hostname === 'www.' + canonical) return Response.redirect(`https://${canonical}${path}${url.search}`, 301);
     const indexable = url.hostname === canonical;
+    // Where the portal lives, for the client's RookieGamers hookup (public/rookie.js).
+    if (path === '/rg.js') return new Response(`export const RG_URL = ${JSON.stringify(env.RG_URL || '')};`, { headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=300' } });
     if (path === '/robots.txt') return text(robots(env, indexable), 'text/plain');
     if (path === '/sitemap.xml') return text(await sitemap(env, DB), 'application/xml');
     if (path === '/llms.txt') return text(llms(env), 'text/plain');
