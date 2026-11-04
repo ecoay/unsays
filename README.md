@@ -14,6 +14,14 @@ It runs entirely on Cloudflare:
 - **Content pages** (`src/pages.js`, `public/site.css`): how to play, 16 topic pages, FAQ, leaderboards, Hall of Fame, Guild Pass, shop, privacy and terms, plus `robots.txt`, `sitemap.xml`, `llms.txt` and `llms-full.txt`. All carry canonical URLs, Open Graph tags and JSON-LD. Hosts other than `SITE_URL` (workers.dev, previews) are kept out of search.
 - **Client extras** (`public/meta.js`): the profile, locker, store and guild sheet in the lobby.
 
+## RookieGamers
+
+unsays is the first game on the [RookieGamers](https://github.com/ecoay/rookiegamers) SDK. The portal frames `https://unsays.com/?rg=1` at `rookiegamers.com/play/unsays`.
+
+- **Client** (`public/rookie.js`): only inside the portal frame, it loads the SDK, reports play, offers RookieGamers sign-in on the intro screen, shows a "play next" card after a game, and adds the player's portal token to the table socket (`?rgt=`). Cookies are blocked in a cross-site frame, so the token stands in for the session cookie.
+- **Server** (`src/rookie.js`): checks the token against the portal's public keys (`RG_URL/.well-known/jwks.json`), links it to an unsays player (`players.rg_sub`), and reports ranked points from public tables to the portal with `RG_SERVER_KEY`.
+- `RG_URL` in `wrangler.jsonc` is the portal's address (`/rg.js` hands it to the client). Leave it empty to turn the hookup off.
+
 ## Money and leaderboards
 
 - **Global leaderboard:** points from public tables count when at least 3 real people played the round (2 at a guild table). Bots never count. Boards reset monthly.
@@ -29,6 +37,7 @@ Each feature switches on when its keys exist, so the game keeps working with non
 | --- | --- | --- |
 | Store | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Stripe dashboard. Add a webhook endpoint at `https://unsays.com/api/stripe/webhook` for `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted` and `charge.refunded`. Turn on the customer portal (Settings, Billing, Customer portal) so guild owners can cancel. |
 | Google sign-in | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Cloud console, OAuth client (Web). Authorized redirect URI: `https://unsays.com/auth/google/callback` (add the workers.dev one too if you test there). |
+| RookieGamers board | `RG_SERVER_KEY` | The unsays server key from RookieGamers (`node rg.mjs server-key unsays`, or the admin API). With it, ranked points from public tables also count on the RookieGamers monthly board for players who came in through the portal. |
 | Email sign-in | `RESEND_API_KEY` | resend.com. Verify the `unsays.com` domain so mail can come from `login@unsays.com` (change `EMAIL_FROM` in `wrangler.jsonc` otherwise). |
 
 When sign-in is set up, buying needs a signed-in account so purchases follow the player. Without any sign-in method, purchases attach to the browser's guest account.

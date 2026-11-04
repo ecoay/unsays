@@ -515,6 +515,7 @@ import { PACKS, checkAnswer } from './shared.js';
 import { GIFTS } from './catalog.js';
 import { ACCOUNT, loadMe, saveMe, openSheet, nameHTML, titleHTML, hashIntent, runIntent } from './meta.js';
 import { logoImg } from './guild-logo.js';
+import { inPortal, rgReady, rgToken, rgUser, rgLogin, rgOnChange, rgPlaying, rgNext } from './rookie.js';
 
 /* ======================= WebGL backdrop ======================= */
 const BG = (() => {
@@ -653,6 +654,20 @@ function reroll(){ ME.hue = Math.floor(Math.random()*360); introOrb.style.setPro
 introOrb.addEventListener('click', reroll);
 introOrb.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); reroll(); }});
 if (hashTable()) $('#introGo').textContent = 'Join the table';
+// In the RookieGamers portal: use the portal name, and offer sign-in so points count on its board.
+if (inPortal()) rgReady().then(async rg => {
+  if (!rg) return;
+  const tip = document.createElement('p'); tip.className = 'muted'; tip.style.marginTop = '12px';
+  const paint = u => {
+    if (u && !nameInput.value) nameInput.value = u.name;
+    tip.innerHTML = u ? `Playing as <b>${esc(u.name)}</b> on RookieGamers. Public tables count on the monthly board.` : '<button class="btn" type="button" id="rgSignin">Sign in to RookieGamers</button> to put your points on the monthly board.';
+    const b = tip.querySelector('#rgSignin'); if (b) b.onclick = () => rgLogin();
+  };
+  paint(await rgUser());
+  $('#introForm').after(tip);
+  // Signing in mid-game: reconnect so the table sees the portal account.
+  rgOnChange(u => { paint(u); if (T && T.ws) T.ws.close(); });
+});
 $('#introForm').addEventListener('submit', e=>{
   e.preventDefault(); SFX.ensure();
   const n = nameInput.value.trim().replace(/\s+/g,' ');
@@ -767,10 +782,15 @@ function joinTable(id){
   $('#stageBody').innerHTML = `<div class="banner"><span class="big">Taking a seat…</span></div>`;
   $('#phase').textContent=''; $('#clock').textContent='';
   connectTable();
+  rgPlaying(true);
 }
-function connectTable(){
+async function connectTable(){
   if (!T) return;
-  const ws = new WebSocket(wsURL('/ws/table/' + T.id)); T.ws = ws;
+  const want = T;
+  // Inside the RookieGamers portal, the portal token stands in for the blocked cookie.
+  const rgt = inPortal() ? await rgToken() : null;
+  if (T !== want) return;
+  const ws = new WebSocket(wsURL('/ws/table/' + T.id) + (rgt ? '?rgt=' + encodeURIComponent(rgt) : '')); T.ws = ws;
   ws.onopen = () => { T.retry = 0; setConn(true); ws.send(JSON.stringify({ t:'hello', cid:ME.cid, name:ME.name, hue:ME.hue })); };
   ws.onmessage = e => onTableMsg(JSON.parse(e.data));
   ws.onclose = e => {
@@ -784,7 +804,7 @@ function connectTable(){
     setTimeout(connectTable, Math.min(8000, 400 * 2 ** T.retry++));
   };
 }
-function leaveTable(){ if (!T) return; const ws=T.ws; cancelAnimationFrame(T.raf); T=null; if (ws){ ws.onclose=null; ws.close(); } BG.target=.1; }
+function leaveTable(){ if (!T) return; const ws=T.ws; cancelAnimationFrame(T.raf); T=null; if (ws){ ws.onclose=null; ws.close(); } BG.target=.1; rgPlaying(false); }
 function sendT(m){ if (T && T.ws && T.ws.readyState===1) T.ws.send(JSON.stringify(m)); }
 function setConn(ok, label){ const c=$('#conn'); c.hidden = ok; c.textContent = label || 'Reconnecting…'; }
 $('#leaveBtn').addEventListener('click', enterLobby);
@@ -983,6 +1003,7 @@ function renderStage(S, prev){
   }
   if (ph==='over') {
     BG.target=.8; BG.warp=1;
+    if (T && T.rgNextFor !== S.champ + ':' + S.round) { T.rgNextFor = S.champ + ':' + S.round; setTimeout(rgNext, 2500); }
     const c=player(S.champ);
     body.innerHTML = `<div class="champ">${orbHTML(c.hue,'lg')}<span class="label">Champion</span><div class="wordmark holo-text">${isMe(c.id)?'You won.':esc(c.name)}</div>${c.tag||c.title?`<div class="muted">${c.tag?`<span class="gtag">[${esc(c.tag)}]</span>`:''}${c.title?esc(c.title):''}</div>`:''}
       <div class="muted">${S.fo.votes[S.fo.a]}–${S.fo.votes[S.fo.b]} in the face-off. A new game starts when the clock runs out.</div>

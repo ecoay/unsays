@@ -5,6 +5,7 @@ import {
 } from '../public/shared.js';
 import { EMOJI_FREE, GIFTS } from '../public/catalog.js';
 import { db, tableProfile, recordRound, recordGameWin, sendGift, recordFriends } from './db.js';
+import { reportRound } from './rookie.js';
 
 // One Table object per room. It owns the game clock, scoring and bots, and sends each
 // player their own view of the state after every change. Sockets are accepted without
@@ -418,6 +419,8 @@ export class Table extends DurableObject {
     if (!real) return;
     const rows = real.map(p => ({ id: p.id, points: gain[p.id] || 0, won: p.id === winnerId }));
     this.db().then(DB => DB && recordRound(DB, rows, this.config.guild?.id || null)).catch(e => console.error('rank', e));
+    // Public tables also count on the RookieGamers monthly board.
+    if (!this.config.guild) this.db().then(DB => DB && reportRound(DB, this.env, rows)).catch(e => console.error('rg rank', e));
   }
 
   emoji(p, e, entryId) {
