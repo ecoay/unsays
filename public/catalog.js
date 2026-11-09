@@ -6,7 +6,8 @@ export const GUILD_PASS = {
   yearly: { id: 'guild_year', name: 'Guild Pass (yearly)', price: 2400, interval: 'year', blurb: '$24 a year, 4 months free' },
 };
 
-// Name styles, win animations, vote-reveal effects and titles. Packs unlock a group of these.
+// Name styles, win animations, vote-reveal effects, avatar frames and titles. Packs unlock a group of these.
+// Frames ring the player's RookieGamers avatar; without one equipped, their RookieGamers frame shows.
 export const FLAIR = {
   name: {
     holo: 'Holo', gold: 'Gold leaf', neon: 'Neon sign', glitch: 'Glitch', fire: 'On fire', frost: 'Frostbite', wrapped: 'Gift wrapped', graffiti: 'Graffiti',
@@ -16,6 +17,9 @@ export const FLAIR = {
   },
   reveal: {
     spotlight: 'Spotlight', shake: 'Earthquake', sparkle: 'Sparkle',
+  },
+  frame: {
+    holo: 'Holo ring', toxic: 'Toxic', hazard: 'Hazard tape', regret: 'Red flag', void: 'Void', ribbon: 'Gift ribbon',
   },
   title: {
     poet: 'Toilet Poet', menace: 'Certified Menace', hr: 'HR Problem', unsayable: 'Unsayable',
@@ -60,6 +64,7 @@ export const PACKS = [
   { id: 'flair_names', xcost: 40, kind: 'flair', name: 'Name styles', price: 199, blurb: 'Make your name stand out at every table.', grants: { name: ['holo', 'gold', 'neon', 'glitch', 'fire'] } },
   { id: 'flair_wins', xcost: 60, kind: 'flair', name: 'Win animations', price: 299, blurb: 'The whole room sees the sky explode when you win a round.', grants: { win: ['supernova', 'storm', 'warp'] } },
   { id: 'flair_reveal', xcost: 60, kind: 'flair', name: 'Vote-reveal effects', price: 299, blurb: 'Your line lands with an effect when the votes come in.', grants: { reveal: ['spotlight', 'shake', 'sparkle'] } },
+  { id: 'flair_frames', xcost: 60, kind: 'flair', name: 'Avatar frames', price: 299, blurb: 'A ring around your avatar at every table.', grants: { frame: ['holo', 'toxic', 'hazard', 'regret', 'void'] } },
   { id: 'flair_titles', xcost: 40, kind: 'flair', name: 'Titles', price: 199, blurb: 'A title under your name, like "Toilet Poet".', grants: { title: ['poet', 'menace', 'hr', 'unsayable', 'liability', 'regretter'] } },
   { id: 'flair_season', kind: 'flair', name: 'Winter drop 2026', price: 499, blurb: 'Frostbite name, Snowfall win and the "Naughty List" title. Gone after winter.', grants: { name: ['frost'], win: ['snowfall'], title: ['naughty'] } },
   { id: 'emoji_toilet', xcost: 40, kind: 'emoji', name: 'Toilet humor', price: 199, blurb: 'For the fart-joke crowd.', emoji: ['💩', '💨', '🧻'] },
@@ -75,6 +80,7 @@ export const PACKS = [
   // Only in the Gift Exchange: paid for with gifts other players sent you, never with money.
   ...EXCHANGE_TITLES.map(([k, t, xcost]) => ({ id: 'x_' + k, kind: 'exchange', xcost, name: `"${t}"`, blurb: 'A title under your name.', grants: { title: [k] } })),
   { id: 'x_wrapped', kind: 'exchange', xcost: 120, name: 'Gift wrapped name', blurb: 'Your name in ribbon stripes with a bow on top.', grants: { name: ['wrapped'] } },
+  { id: 'x_ribbon', kind: 'exchange', xcost: 80, name: 'Gift ribbon frame', blurb: 'A ribboned frame around your avatar.', grants: { frame: ['ribbon'] } },
   { id: 'x_emoji', kind: 'exchange', xcost: 30, name: 'Gifted emoji', blurb: 'Emoji you can only get from the exchange.', emoji: ['🎀', '🥹', '💝'] },
   // Won by streaks, never sold.
   ...STREAK_REWARDS.map(r => rewardPack(r, 'streak')),
@@ -95,7 +101,7 @@ export const money = cents => '$' + (cents / 100).toFixed(cents % 100 ? 2 : 0);
 export function unlocked(owned, earnedTitles = []) {
   const ids = new Set(owned);
   for (const id of owned) for (const b of packById(id)?.bundle || []) ids.add(b);
-  const out = { name: new Set(), win: new Set(), reveal: new Set(), title: new Set(), emoji: new Set(EMOJI_FREE), big: new Set(), packs: ids };
+  const out = { name: new Set(), win: new Set(), reveal: new Set(), title: new Set(), frame: new Set(), emoji: new Set(EMOJI_FREE), big: new Set(), packs: ids };
   for (const id of ids) {
     const p = packById(id); if (!p) continue;
     for (const k in p.grants || {}) for (const v of p.grants[k]) out[k].add(v);

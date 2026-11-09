@@ -1,18 +1,19 @@
 // Accounts, the store, the flair locker and guilds. One sheet with three tabs, opened from the lobby.
 import { PACKS, GUILD_PASS, FLAIR, GIFTS, DROP, STREAK_REWARDS, FRIEND_REWARDS, checkinGifts, packById, money, titleText } from './catalog.js';
 import { GUILD_COLORS, DEFAULT_COLOR, logoImg, logoURL } from './guild-logo.js';
+import { rgToken, rgForget } from './rg.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 3200); }
 
-export const ACCOUNT = { me: null, providers: { google: false, email: false }, store: false };
+export const ACCOUNT = { me: null, rg: 'https://rookiegamers.com', store: false };
 
 async function api(path, body, method = body ? 'POST' : 'GET') {
   const r = await fetch(path, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin' });
   let j = {}; try { j = await r.json(); } catch {}
   if (j.me !== undefined) {
-    ACCOUNT.me = j.me; ACCOUNT.providers = j.providers || ACCOUNT.providers; ACCOUNT.store = !!j.store; announce();
+    ACCOUNT.me = j.me; ACCOUNT.rg = j.rg || ACCOUNT.rg; ACCOUNT.store = !!j.store; announce();
     if (j.me?.drop?.dropped) toast(`Gift drop: +${j.me.drop.dropped} gifts today.`);
   }
   if (!r.ok) throw Object.assign(new Error(j.error || 'Something went wrong.'), { data: j });
@@ -22,6 +23,32 @@ const announce = () => window.dispatchEvent(new CustomEvent('unsays:me', { detai
 
 export async function loadMe() { try { await api('/api/me'); } catch {} return ACCOUNT.me; }
 export async function saveMe(name, hue) { try { await api('/api/me', { name, hue }); } catch {} return ACCOUNT.me; }
+
+// Links the RookieGamers player to this browser's unsays account. login: true opens RookieGamers
+// sign-in when the player isn't signed in there yet. Resolves to the account, or null if they backed out.
+let linking = null;
+export function signInRG({ login = false } = {}) {
+  // The login button and the SDK's sign-in event can both ask at once; one request serves both.
+  if (linking) return linking;
+  linking = (async () => {
+    const token = await rgToken({ login });
+    if (!token) return null;
+    await api('/api/rg/session', { token });
+    return ACCOUNT.me;
+  })().finally(() => { linking = null; });
+  return linking;
+}
+
+/* ---------- avatars ---------- */
+
+// p: { avatar, frame, hue }. A RookieGamers avatar in its frame, or a color orb for guests and bots.
+export function avatarHTML(p, size = '') {
+  const fr = p.frame ? ' fr-' + esc(p.frame) : '';
+  const orb = `style="--h:${(p.hue | 0) % 360}"`;
+  if (p.avatar) return `<span class="av ${size}${fr}"><img src="${esc(p.avatar)}" alt="" loading="lazy" decoding="async"></span>`;
+  if (fr) return `<span class="av ${size}${fr}"><span class="orb fill" ${orb}></span></span>`;
+  return `<span class="orb ${size}" ${orb}></span>`;
+}
 
 /* ---------- names with flair ---------- */
 
@@ -75,34 +102,35 @@ function paint() {
 /* ---------- profile + locker ---------- */
 
 function signInHTML() {
-  const p = ACCOUNT.providers;
-  if (!p.google && !p.email) return '<p class="muted">Sign-in is coming soon. Until then your account lives in this browser.</p>';
-  return `<div class="signin"><p class="muted">Sign in to keep your points, packs and guild on every device.</p>
-    <div class="actions">${p.google ? '<a class="btn" href="/auth/google">Continue with Google</a>' : ''}</div>
-    ${p.email ? `<form class="compose" id="emailForm"><input class="field" id="emailIn" type="email" autocomplete="email" placeholder="you@example.com" aria-label="Email" required><button class="btn" type="submit">Email me a link</button></form>` : ''}</div>`;
+  return `<div class="signin"><p class="muted">Log in with RookieGamers to keep your points, packs and guild on every device, and use your RookieGamers avatar.</p>
+    <div class="actions"><button class="btn prime" type="button" id="rgLogin">Log in with RookieGamers</button></div></div>`;
 }
 
+// Without an unsays frame or title equipped, the RookieGamers one shows, so "None" says which.
 function select(kind, me, label) {
   const opts = me.unlocked[kind];
   const names = kind === 'title' ? Object.fromEntries(opts.map(k => [k, titleText(k)])) : FLAIR[kind];
   const cur = me.equip[kind] || '';
+  const fallback = kind === 'frame' && me.rg?.frame ? 'My RookieGamers frame' : kind === 'title' && me.rg?.title ? me.rg.title : 'None';
   return `<label><span class="label">${label}</span><select data-equip="${kind}" ${opts.length ? '' : 'disabled'}>
-    <option value="">${opts.length ? 'None' : 'Get a pack in the store'}</option>${opts.map(k => `<option value="${esc(k)}" ${k === cur ? 'selected' : ''}>${esc(names[k] || k)}</option>`).join('')}</select></label>`;
+    <option value="">${opts.length ? esc(fallback) : 'Get a pack in the store'}</option>${opts.map(k => `<option value="${esc(k)}" ${k === cur ? 'selected' : ''}>${esc(names[k] || k)}</option>`).join('')}</select></label>`;
 }
 
 function profileHTML(me) {
   const s = me.score;
-  return `<div class="ph">${`<span class="orb lg" style="--h:${me.hue}"></span>`}<div><div class="ph-name">${nameHTML({ name: me.name, tag: me.guild?.active ? me.guild.tag : null, style: me.equip.name })}</div>
-      <div class="muted">${me.signedIn ? `Signed in${me.email ? ' as ' + esc(me.email) : ''}` : 'Guest account'}</div></div></div>
+  const rgProfile = me.rg ? `${ACCOUNT.rg}/u/${encodeURIComponent(me.rg.id)}` : null;
+  return `<div class="ph">${avatarHTML(me, 'lg')}<div><div class="ph-name">${nameHTML({ name: me.name, tag: me.guild?.active ? me.guild.tag : null, style: me.equip.name })}</div>
+      <div class="muted">${me.rg ? `RookieGamers account · <a href="${esc(rgProfile)}" target="_blank" rel="noopener">Change avatar</a>` : me.signedIn ? 'Signed in' : 'Guest account'}</div></div></div>
     <div class="stats"><div><b>${s.points}</b><span>points this month</span></div><div><b>${s.round_wins}</b><span>rounds won</span></div><div><b>${s.game_wins}</b><span>games won</span></div><div><b>${me.giftsReceived}</b><span>gifts received</span></div></div>
     <p class="muted small">Points count on the <a href="/leaderboard" target="_blank" rel="noopener">global leaderboard</a> when at least 3 real people play a round. Boards reset monthly, and the top 3 go into the <a href="/hall-of-fame" target="_blank" rel="noopener">Hall of Fame</a>.</p>
     <h3>Locker</h3>
     <div class="row2">${select('name', me, 'Name style')}${select('title', me, 'Title')}</div>
-    <div class="row2">${select('win', me, 'Win animation')}${select('reveal', me, 'Vote reveal')}</div>
+    <div class="row2">${select('frame', me, 'Avatar frame')}${select('win', me, 'Win animation')}</div>
+    <div class="row2">${select('reveal', me, 'Vote reveal')}<span></span></div>
     <p class="muted small">You have <b>${me.gifts}</b> gift${me.gifts === 1 ? '' : 's'} to send. ${GIFTS.gift.icon} costs 1 and ${GIFTS.crown.icon} costs ${GIFTS.crown.cost}.
       ${me.drop ? `Your gift drop adds ${me.drop.perDay} a day until ${new Date(me.drop.until).toLocaleDateString()}.` : ''}
       You have <b>${me.earned}</b> received gift${me.earned === 1 ? '' : 's'} to spend in the <a href="#store" data-goto="store">Gift Exchange</a>.</p>
-    ${me.signedIn ? '<div class="actions"><button class="btn small ghost" type="button" id="signOut">Sign out</button></div>' : signInHTML()}`;
+    ${me.rg ? '<div class="actions"><button class="btn small ghost" type="button" id="signOut">Log out</button></div>' : signInHTML()}`;
 }
 
 /* ---------- daily check-in + friend streaks ---------- */
@@ -276,13 +304,12 @@ function wire(body, me) {
     const r = j.checkedIn;
     if (r) toast(`Day ${r.streak}: +${r.gifts} gift${r.gifts > 1 ? 's' : ''}${r.rewards.length ? `, and you won ${r.rewards.map(id => packById(id).name).join(', ')}` : ''}.`);
   }));
-  on('signOut', () => act(async () => { await api('/api/auth/signout', {}); ACCOUNT.me = null; await saveMe(localName(), localHue()); }, 'Signed out.'));
+  on('signOut', () => act(async () => { await api('/api/auth/signout', {}); rgForget(); ACCOUNT.me = null; await saveMe(localName(), localHue()); }, 'Logged out. You\'re playing as a guest.'));
+  on('rgLogin', () => act(async () => { if (!await signInRG({ login: true })) throw new Error('RookieGamers login didn\'t finish.'); }, 'Logged in with RookieGamers.'));
   on('leaveGuild', () => act(() => api('/api/guild/leave', {}), 'You left the guild.'));
   on('resetInvite', () => act(() => api('/api/guild/invite', {}), 'The old link no longer works.'));
   on('billing', () => act(async () => { const j = await api('/api/portal', {}); location.href = j.url; }));
   on('copyGuild', async () => { const v = body.querySelector('#guildLink').value; try { await navigator.clipboard.writeText(v); toast('Invite link copied.'); } catch { body.querySelector('#guildLink').select(); } });
-  const ef = body.querySelector('#emailForm');
-  if (ef) ef.onsubmit = e => { e.preventDefault(); act(() => api('/api/auth/email', { email: body.querySelector('#emailIn').value }), 'Check your email for the sign-in link.'); };
   const gf = body.querySelector('#guildForm');
   if (gf) gf.onsubmit = e => { e.preventDefault(); const f = new FormData(gf); act(() => api('/api/guild', Object.fromEntries(f)), 'Guild created.'); };
   const ge = body.querySelector('#guildEdit');
@@ -294,7 +321,7 @@ const localHue = () => { try { return JSON.parse(localStorage.getItem('unsays.hu
 
 // Hash links like /#store or /#bought-emoji_roast come back from other pages and Stripe.
 export function hashIntent(hash) {
-  if (/^#(store|daily|bought-|guild|profile|account|signed-in|signin-)/.test(hash)) return hash.slice(1);
+  if (/^#(store|daily|bought-|guild|profile|account)/.test(hash)) return hash.slice(1);
   return null;
 }
 export function runIntent(intent) {
@@ -303,9 +330,6 @@ export function runIntent(intent) {
   if (intent === 'guild') return openSheet('guild');
   if (intent === 'daily') return openSheet('daily');
   if (intent === 'profile' || intent === 'account') return openSheet('profile');
-  if (intent === 'signed-in') { toast('Signed in.'); return; }
-  if (intent === 'signin-failed') return toast('Sign-in didn\'t finish. Try again.');
-  if (intent === 'signin-expired') return toast('That sign-in link expired. Ask for a new one.');
   if (intent.startsWith('bought-')) {
     const id = intent.slice(7);
     const name = PACKS.find(p => p.id === id)?.name || (id.startsWith('guild') ? 'Guild Pass' : 'your purchase');

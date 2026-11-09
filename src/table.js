@@ -5,6 +5,7 @@ import {
 } from '../public/shared.js';
 import { EMOJI_FREE, GIFTS } from '../public/catalog.js';
 import { db, tableProfile, recordRound, recordGameWin, sendGift, recordFriends } from './db.js';
+import { reportScores } from './rg.js';
 
 // One Table object per room. It owns the game clock, scoring and bots, and sends each
 // player their own view of the state after every change. Sockets are accepted without
@@ -122,6 +123,7 @@ export class Table extends DurableObject {
     }
     ws.pid = cid;
     await this.loadProfile(p);
+    if (p.prof?.rgName) p.name = p.prof.rgName; // RookieGamers players play under their RookieGamers name
     if (p.ws !== ws) return; // reconnected again while loading
     this.send(ws, { t: 'welcome', you: cid, config: this.publicConfig(), chat: this.chatLog });
     if (this.phase === 'idle') {
@@ -416,8 +418,10 @@ export class Table extends DurableObject {
     const real = this.ranked();
     this.wasRanked = !!real;
     if (!real) return;
-    const rows = real.map(p => ({ id: p.id, points: gain[p.id] || 0, won: p.id === winnerId }));
+    const rows = real.map(p => ({ id: p.id, points: gain[p.id] || 0, won: p.id === winnerId, rgId: p.prof.rgId }));
     this.db().then(DB => DB && recordRound(DB, rows, this.config.guild?.id || null)).catch(e => console.error('rank', e));
+    // Public tables also feed the unsays board on RookieGamers, like the global board here.
+    if (!this.config.guild) this.ctx.waitUntil(reportScores(this.env, rows));
   }
 
   emoji(p, e, entryId) {
@@ -614,7 +618,8 @@ export class Table extends DurableObject {
       t: 'state', now: Date.now(), phase: ph, endsAt: this.endsAt || 0, dur: this.dur || 0,
       round: this.round || 0, acro: this.acro || '', topic: publicTopic(this.topic || GENERAL), target: this.config.target,
       players: [...this.players.values()].map(x => ({ id: x.id, name: x.name, hue: x.hue, bot: x.bot, score: x.score, connected: x.bot || x.connected, status: ph === 'idle' || ph === 'starting' ? '' : this.status(x),
-        tag: x.prof?.guild?.tag || null, style: x.prof?.flair.name || null, title: x.prof?.flair.title || null, acct: !!x.prof })),
+        tag: x.prof?.guild?.tag || null, style: x.prof?.flair.name || null, title: x.prof?.flair.title || null, acct: !!x.prof,
+        avatar: x.prof?.avatar || null, frame: x.prof?.flair.frame || null })),
       me: p.prof ? { gifts: p.prof.gifts, emoji: p.prof.emoji, account: p.prof.account } : { gifts: 0, emoji: EMOJI_FREE, account: false },
       ranked: !!this.ranked(), guild: this.config.guild || null,
     };
