@@ -47,7 +47,7 @@ export const FAQ = [
   ['How long is a game of Unsay?', 'A Turbo game to 30 points usually takes 10 to 15 minutes. Turbo rounds give 30 seconds to write and 15 to vote, Classic rounds give 60 and 20, and 6- and 7-letter rounds get extra time. Sprint tables play to 15 for a shorter game.'],
   ['Can I play Unsay with friends privately?', 'Yes. Choose Create table in the lobby, then send your friends the invite link. Your table waits in a waiting room until you press Start, and you can turn bots off.'],
   ['Is Unsay family friendly?', 'Tables marked Keep it clean blur common swear words in lines and chat. Tables marked Adult language don\'t. The game is meant for players 13 and older, and Adult tables for players 18 and older.'],
-  ['Do I need an account or a download?', 'No download is needed, and it works on phones, tablets and computers. You can play as a guest right away. Signing in with Google or an email link keeps your points, purchases and guild on every device.'],
+  ['Do I need an account or a download?', 'No download is needed, and it works on phones, tablets and computers. You can play as a guest right away. Logging in with your RookieGamers account keeps your points, purchases, guild and avatar on every device.'],
   ['What is the Unsay Guild Pass?', 'The Guild Pass costs $2.99 a month (or $24 a year). It gives your crew its own members-only 14-seat table in the lobby, a guild leaderboard with its own Hall of Fame, a guild tag next to every member\'s name, and no ads for the owner.'],
   ['How does the Unsay leaderboard work?', 'Points from public tables count on the global leaderboard when at least 3 real people played the round. Bots never count. Every board resets on the 1st of the month, and that month\'s top 3 players, top guild and most-gifted line go into the Hall of Fame for good, with a free champion title.'],
   ['What are flair, emoji and gift packs?', 'Flair packs change how your name and wins look: name styles, win animations, vote-reveal effects and titles. Emoji packs add reactions that float over the table. Gifts let you reward a line you loved after the votes are in. They are all cosmetic and never change the score.'],
@@ -406,21 +406,21 @@ async function joinPage(env, DB, code) {
 function legal(env, path) {
   const contact = esc(env.CONTACT_EMAIL || 'hello@unsays.com');
   if (path === '/privacy') return layout(env, {
-    path, title: 'Privacy Policy | Unsay', description: 'What Unsay keeps and why, how Google ad cookies work here, how to opt out of personalized ads, and how to delete your account. From Tenacié LLC.',
-    body: `<section class="legal"><span class="label">Last updated Oct 30, 2026</span><h1>Privacy</h1>
+    path, title: 'Privacy Policy | Unsay', description: 'What Unsay keeps and why, how ads and ad cookies work here, how to opt out of personalized ads, and how to delete your account. From Tenacié LLC.',
+    body: `<section class="legal"><span class="label">Last updated Nov 9, 2026</span><h1>Privacy</h1>
       <p>Unsay is a browser game run by Tenacié LLC. This page says what we keep and why. Plain English, no tricks.</p>
       <h2>What we collect</h2><ul class="list">
         <li><b>Your player name and color,</b> which other players see.</li>
         <li><b>A sign-in cookie</b> that keeps your guest or signed-in account on this device.</li>
-        <li><b>Your email address or Google account ID,</b> only if you sign in, so your account works on other devices.</li>
+        <li><b>Your RookieGamers player ID, name, avatar, frame and title,</b> only if you log in with RookieGamers, so your account works on other devices. RookieGamers (rookiegamers.com, also run by us) handles the login itself; we never see your password or email.</li>
         <li><b>Game records:</b> points, wins, titles, daily check-ins and streaks, gifts sent and received, guild membership, and what you've bought.</li>
         <li><b>Lines and chat</b> while a game is running. We don't keep chat after the table closes. Lines that receive gifts are kept for the leaderboard and Hall of Fame.</li>
         <li><b>Payments</b> go through Stripe. We never see or store your card number.</li>
         <li><b>Settings saved in your browser</b> (local storage), like your name and color, so the game remembers them.</li>
         <li>Our host, Cloudflare, keeps standard request logs for security and debugging.</li></ul>
       <p>We don't sell your personal information.</p>
-      <h2>Advertising and cookies (Google AdSense)</h2>
-      <p>We use Google AdSense to show ads on some pages and tables, which helps keep Unsay free.</p><ul class="list">
+      <h2>Advertising and cookies</h2>
+      <p>Ads in the game are served by RookieGamers, which may use Google and other ad networks. They help keep Unsay free.</p><ul class="list">
         <li>Third-party vendors, including Google, use cookies to serve ads based on your prior visits to this website or other websites.</li>
         <li>Google's use of advertising cookies enables it and its partners to serve ads to you based on your visit to this site and/or other sites on the Internet.</li>
         <li>You can opt out of personalized advertising in Google Ads Settings: <a href="https://adssettings.google.com">adssettings.google.com</a></li>
@@ -428,7 +428,7 @@ function legal(env, path) {
         <li>How Google uses information from sites that use its services: <a href="https://policies.google.com/technologies/partner-sites">policies.google.com/technologies/partner-sites</a></li>
         <li>Other third-party ad vendors or ad networks may also use cookies to serve ads on our site.</li>
         <li>Visitors in the EEA, the UK and Switzerland are asked for consent through a Google-certified consent tool before personalized ads load.</li>
-        <li>Ads never load at Adult language tables (like After Dark and The Breakup Booth) or at guild tables, and Guild Pass owners don't see ads anywhere.</li></ul>
+        <li>Ads only show at a break, when you leave a table after playing, never while you write or vote. They never load after Adult language tables (like After Dark and The Breakup Booth) or guild tables, and Guild Pass owners don't see ads anywhere.</li></ul>
       <h2>Your choices</h2><p>Block or delete cookies in your browser settings, use the opt-out links above, or ask us to delete your data. Depending on where you live, including California, you may have rights to know, delete and opt out. We honor those requests through the same email.</p>
       <h2>Deleting your data</h2><p>Email <a href="mailto:${contact}">${contact}</a> from the address on your account, or tell us your player name, and we'll delete your account and records.</p>
       <h2>Kids</h2><p>You must be 13 or older to play. We don't knowingly collect personal information from children under 13. If you think a child has given us data, email us and we'll delete it.</p>

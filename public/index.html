@@ -84,6 +84,28 @@ button{cursor:pointer}
 .orb{--h:260;width:30px;height:30px;border-radius:50%;flex:none;background:conic-gradient(from 210deg,hsl(var(--h) 95% 65%),hsl(calc(var(--h) + 70) 95% 60%),hsl(calc(var(--h) + 150) 95% 65%),hsl(var(--h) 95% 65%));box-shadow:inset -4px -6px 10px rgba(0,0,0,.35),inset 3px 3px 6px rgba(255,255,255,.35),0 0 14px hsla(var(--h),95%,60%,.35)}
 .orb.lg{width:64px;height:64px}
 .orb.sm{width:22px;height:22px}
+/* RookieGamers avatars, and the frames drawn around them (unsays frames, or fr-rg-* from the player's RookieGamers profile). */
+.av{width:30px;height:30px;border-radius:50%;flex:none;display:inline-grid;place-items:center;overflow:hidden;background:#221e33;line-height:0}
+.av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.av.lg{width:64px;height:64px}
+.av.sm{width:22px;height:22px}
+.av .orb.fill{width:100%;height:100%;box-shadow:none}
+.av[class*=" fr-"]{border:2px solid transparent;background:linear-gradient(#221e33,#221e33) padding-box,var(--ring) border-box;box-shadow:0 0 0 1px var(--ring-c,transparent),0 0 12px var(--ring-glow,transparent)}
+.av.lg[class*=" fr-"]{border-width:3px}
+.fr-holo{--ring:conic-gradient(var(--cyan),var(--violet),var(--pink),var(--cyan));--ring-glow:rgba(143,107,255,.55)}
+.fr-toxic{--ring:linear-gradient(135deg,#d4ff3a,#2bff88 50%,#0b7a3b);--ring-glow:rgba(120,255,90,.5)}
+.fr-hazard{--ring:repeating-linear-gradient(45deg,#ffd400 0 5px,#1a1a1a 5px 10px)}
+.fr-regret{--ring:linear-gradient(135deg,#ff6b6b,#d0021b 55%,#6e0010);--ring-glow:rgba(255,40,60,.5)}
+.fr-void{--ring:conic-gradient(#000,#3b2a6b,#000,#14102a,#000);--ring-c:rgba(143,107,255,.45)}
+.fr-ribbon{--ring:repeating-linear-gradient(90deg,#ff4fd2 0 6px,#fff 6px 9px,#ff4fd2 9px 15px);--ring-glow:rgba(255,79,210,.45)}
+.fr-rg-bronze{--ring:linear-gradient(135deg,#f6c08f,#8a4b1f 50%,#d9925a)}
+.fr-rg-silver{--ring:linear-gradient(135deg,#ffffff,#8c94a6 50%,#e3e7ef)}
+.fr-rg-scenespot{--ring:linear-gradient(135deg,#fff1b0,#f5b82e 45%,#b97400);--ring-glow:rgba(245,184,46,.55)}
+.fr-rg-champion{--ring:conic-gradient(#ffd76a,#8f6bff,#ffd76a,#8f6bff,#ffd76a);--ring-glow:rgba(143,107,255,.6)}
+.fr-rg-neon{--ring:linear-gradient(135deg,#2ef2ff,#8f6bff);--ring-glow:rgba(46,242,255,.6)}
+.fr-rg-inferno{--ring:linear-gradient(160deg,#ffe14d,#ff5c39 45%,#b3124f);--ring-glow:rgba(255,92,57,.6)}
+.fr-rg-rainbow{--ring:conic-gradient(#ff4d4d,#ffb84d,#fff04d,#4dff88,#4dd2ff,#9b6bff,#ff4dd2,#ff4d4d)}
+.fr-rg-diamond{--ring:conic-gradient(#ffffff,#9fe6ff,#ffffff,#b9c2ff,#ffffff,#9fe6ff,#ffffff);--ring-glow:rgba(170,225,255,.75)}
 
 .wordmark{font-family:var(--f-display);font-weight:800;letter-spacing:-.04em;line-height:.9}
 .wordmark .dot{color:var(--pink)}
@@ -207,6 +229,12 @@ button{cursor:pointer}
 .step strong{display:block;color:var(--ink);font-size:14px}
 .name-row{display:flex;gap:12px;align-items:center}
 .name-row .orb{cursor:pointer}
+.enter{display:flex;flex-direction:column;gap:12px}
+.rg-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.rg-row .or{font-size:13px;color:var(--ink-faint)}
+.checking-note{font-size:14px;color:var(--ink-dim)}
+.intro-card.checking .enter{display:none}
+.intro-card:not(.checking) .checking-note{display:none}
 .field{flex:1;min-width:0;background:rgba(0,0,0,.35);border:1px solid var(--line-hi);border-radius:12px;padding:12px 14px;outline:none;transition:border-color .2s,box-shadow .2s}
 .field:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(89,242,255,.15)}
 .proto-note{font-size:12.5px;color:var(--ink-faint)}
@@ -385,6 +413,8 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
 }
 </style>
 
+<!-- RookieGamers: one account, avatar, ads and leaderboard across the portal's games. The Worker swaps the origin for RG_URL. -->
+<script id="rg-sdk" src="https://rookiegamers.com/sdk/v1.js" async></script>
 </head>
 <body>
 <canvas id="bg" aria-hidden="true"></canvas>
@@ -402,7 +432,7 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
 <div class="app">
   <!-- INTRO -->
   <section id="intro">
-    <div class="intro-hero"><div class="intro-card glass">
+    <div class="intro-hero"><div class="intro-card glass checking" id="introCard">
       <div class="wordmark">unsays<span class="dot">.</span></div>
       <div class="tagline">Everyone gets the same letters. Write the thing you <b>can't unsay</b>. Fastest wit wins.</div>
       <div class="steps">
@@ -410,11 +440,18 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
         <div class="step"><span class="n">02</span><strong>Vote</strong><p>Pick the best line. Skip the vote and you lose the round's points.</p></div>
         <div class="step"><span class="n">03</span><strong>Pick</strong><p>The round winner chooses the next topic. First to 30 hits the face-off.</p></div>
       </div>
-      <form id="introForm" class="name-row">
-        <span class="orb lg" id="introOrb" title="Tap for a new color" role="button" tabindex="0" aria-label="Change your color"></span>
-        <input class="field" id="nameInput" maxlength="18" placeholder="Pick a name" autocomplete="off" aria-label="Your name">
-        <button class="btn prime" type="submit" id="introGo">Enter lobby</button>
-      </form>
+      <div class="checking-note" aria-live="polite">Checking for your RookieGamers login…</div>
+      <div class="enter">
+        <div class="rg-row" id="rgRow" hidden>
+          <button class="btn prime" type="button" id="rgLoginBtn">Log in with RookieGamers</button>
+          <span class="or">Keeps your points, packs and avatar on every device. Or play as a guest:</span>
+        </div>
+        <form id="introForm" class="name-row">
+          <span class="orb lg" id="introOrb" title="Tap for a new color" role="button" tabindex="0" aria-label="Change your color"></span>
+          <input class="field" id="nameInput" maxlength="18" placeholder="Pick a name" autocomplete="off" aria-label="Your name">
+          <button class="btn" type="submit" id="introGo">Continue as guest</button>
+        </form>
+      </div>
       <div class="proto-note">Bots fill empty seats until more people join, so a table is always ready.</div>
     </div></div>
     <article class="about glass">
@@ -440,7 +477,7 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
       <a class="btn small ghost" href="/leaderboard" target="_blank" rel="noopener">Leaderboard</a>
       <button class="btn small" id="dailyBtn" type="button">Daily <span class="ping" id="dailyPing" hidden></span></button>
       <button class="btn small" id="storeBtn" type="button">Store</button>
-      <button class="pill" id="mePill" type="button" title="Profile, locker and guild"><span class="orb sm" id="meOrb"></span><span id="meName"></span></button>
+      <button class="pill" id="mePill" type="button" title="Profile, locker and guild"><span id="meAv"></span><span id="meName"></span></button>
     </div>
     <div class="lobby-head">
       <h1>Pick a table.<br><span class="holo-text">Say something you'll regret.</span></h1>
@@ -513,7 +550,8 @@ button.pick:hover{border-color:var(--cyan);transform:translateY(-2px)}
 <script type="module">
 import { PACKS, checkAnswer } from './shared.js';
 import { GIFTS } from './catalog.js';
-import { ACCOUNT, loadMe, saveMe, openSheet, nameHTML, titleHTML, hashIntent, runIntent } from './meta.js';
+import { ACCOUNT, loadMe, saveMe, signInRG, openSheet, nameHTML, titleHTML, avatarHTML, hashIntent, runIntent } from './meta.js';
+import { rgStart, rgUser, rgOnUser, rgLoaded, rgPlaying, rgXp, rgAudio, rgBreakAd } from './rg.js';
 import { logoImg } from './guild-logo.js';
 
 /* ======================= WebGL backdrop ======================= */
@@ -604,17 +642,17 @@ const BG = (() => {
 
 /* ======================= Sound ======================= */
 const SFX = (() => {
-  let ctx=null, on=true;
+  let ctx=null, on=true, hush=false;
   function ensure(){ if(!ctx){ try{ ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(ctx&&ctx.state==='suspended') ctx.resume(); }
   function tone(f, d=.12, type='sine', v=.08, slide=0, delay=0){
-    if(!on||!ctx) return;
+    if(!on||hush||!ctx) return;
     const t=ctx.currentTime+delay, o=ctx.createOscillator(), g=ctx.createGain();
     o.type=type; o.frequency.setValueAtTime(f,t); if(slide) o.frequency.exponentialRampToValueAtTime(f*slide,t+d);
     g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+d);
     o.connect(g).connect(ctx.destination); o.start(t); o.stop(t+d+.02);
   }
   return {
-    ensure, get on(){return on}, toggle(){on=!on; return on;},
+    ensure, get on(){return on}, toggle(){on=!on; return on;}, hush(m){hush=m;},
     tick(){tone(1200,.05,'square',.03)},
     key(){tone(520+Math.random()*80,.04,'triangle',.025)},
     ok(){tone(660,.08,'sine',.05);tone(990,.12,'sine',.05,0,.06)},
@@ -630,7 +668,6 @@ const SFX = (() => {
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const store = { get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v);}catch(e){return d;} }, set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} } };
-function orbHTML(h, cls=''){ return `<span class="orb ${cls}" style="--h:${h}"></span>`; }
 function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2800); }
 function floatAt(el, text){ if(!el) return; const r=el.getBoundingClientRect(); const f=document.createElement('div'); f.className='float'; f.textContent=text; f.style.left=(r.left+r.width/2-20)+'px'; f.style.top=(r.top)+'px'; document.body.appendChild(f); setTimeout(()=>f.remove(),1500); }
 const wsURL = path => (location.protocol==='https:'?'wss://':'ws://') + location.host + path;
@@ -714,7 +751,7 @@ function enterLobby(){
 function paintMe(){
   const me = ACCOUNT.me;
   $('#meName').innerHTML = nameHTML({ name: ME.name, tag: me && me.guild && me.guild.active ? me.guild.tag : null, style: me && me.equip.name });
-  $('#meOrb').style.setProperty('--h',ME.hue);
+  $('#meAv').innerHTML = avatarHTML(me ? { avatar: me.avatar, frame: me.frame, hue: ME.hue } : { hue: ME.hue }, 'sm');
   $('#dailyPing').hidden = !me || me.checkin.today;
 }
 $('#dailyBtn').addEventListener('click', ()=>openSheet('daily'));
@@ -759,7 +796,7 @@ let T = null; // { id, ws, retry, config, S, offset, key, raf, myFirst }
 
 function joinTable(id){
   leaveLobby(); leaveTable();
-  T = { id, retry:0, S:null, offset:0, key:'', config:null };
+  T = { id, retry:0, S:null, offset:0, key:'', config:null, played:0 };
   history.replaceState(null, '', '#t-' + id);
   show('table');
   $('#tName').textContent = TABLES.find(t=>t.id===id)?.name || 'Joining…';
@@ -784,10 +821,18 @@ function connectTable(){
     setTimeout(connectTable, Math.min(8000, 400 * 2 ** T.retry++));
   };
 }
-function leaveTable(){ if (!T) return; const ws=T.ws; cancelAnimationFrame(T.raf); T=null; if (ws){ ws.onclose=null; ws.close(); } BG.target=.1; }
+function leaveTable(){ if (!T) return; rgPlaying(false); const ws=T.ws; cancelAnimationFrame(T.raf); T=null; if (ws){ ws.onclose=null; ws.close(); } BG.target=.1; }
 function sendT(m){ if (T && T.ws && T.ws.readyState===1) T.ws.send(JSON.stringify(m)); }
 function setConn(ok, label){ const c=$('#conn'); c.hidden = ok; c.textContent = label || 'Reconnecting…'; }
-$('#leaveBtn').addEventListener('click', enterLobby);
+$('#leaveBtn').addEventListener('click', backToLobby);
+// Leaving a table after playing is a natural break for an ad. Never for the Guild Pass owner, never from a
+// guild or Adult language table, and RookieGamers caps it at one every 3 minutes. Its SDK mutes the game while it shows.
+function backToLobby(){
+  const c = T && T.config;
+  const adOk = T && T.played > 0 && c && !c.guild && c.mode === 'clean' && !(ACCOUNT.me && ACCOUNT.me.adFree);
+  enterLobby();
+  if (adOk) rgBreakAd();
+}
 $('#inviteBtn').addEventListener('click', async ()=>{
   const link = location.origin + location.pathname + '#t-' + (T && T.id);
   try { await navigator.clipboard.writeText(link); toast('Invite link copied.'); }
@@ -834,6 +879,8 @@ function render(S){
     renderStage(S, prev);
   } else updateStage(S);
   renderBoard(S, changed && S.phase==='results');
+  // Playtime on RookieGamers counts only while a game is running, not in the waiting room or after it ends.
+  rgPlaying(!/^(waiting|idle|over)$/.test(S.phase));
   renderEmojiBar(S);
   runClock();
 }
@@ -862,7 +909,7 @@ function topicHTML(t){
 }
 function vsHTML(S){
   const a=player(S.fo.a), b=player(S.fo.b), v=S.fo.votes;
-  return `<div class="vs"><div class="side">${orbHTML(a.hue)}<b>${isMe(a.id)?'You':nameHTML(a)}</b><span class="score">${v[a.id]}</span></div><span class="vsx holo-text">VS</span><div class="side"><span class="score">${v[b.id]}</span><b>${isMe(b.id)?'You':nameHTML(b)}</b>${orbHTML(b.hue)}</div></div>`;
+  return `<div class="vs"><div class="side">${avatarHTML(a)}<b>${isMe(a.id)?'You':nameHTML(a)}</b><span class="score">${v[a.id]}</span></div><span class="vsx holo-text">VS</span><div class="side"><span class="score">${v[b.id]}</span><b>${isMe(b.id)?'You':nameHTML(b)}</b>${avatarHTML(b)}</div></div>`;
 }
 const smallTiles = acro => `<div class="tiles">${acro.split('').map(L=>`<span class="tile" style="animation:none;width:clamp(34px,6vw,46px);font-size:clamp(17px,3vw,24px);border-radius:10px">${L}</span>`).join('')}</div>`;
 
@@ -946,24 +993,26 @@ function renderStage(S, prev){
   if (ph==='results') {
     BG.target=.6;
     const r=S.results, w=r.winner && player(r.winner);
-    const ban = w ? `<div class="banner">${orbHTML(w.hue)}<span class="big">${isMe(w.id)?'You win the round':esc(w.name)+' wins the round'}</span><span class="tag gold">+${S.acro.length} win bonus</span></div>` : `<div class="banner"><span class="big">No votes this round.</span></div>`;
+    const ban = w ? `<div class="banner">${avatarHTML(w)}<span class="big">${isMe(w.id)?'You win the round':esc(w.name)+' wins the round'}</span><span class="tag gold">+${S.acro.length} win bonus</span></div>` : `<div class="banner"><span class="big">No votes this round.</span></div>`;
     const warn = r.missedVote ? `<div class="banner warn">You didn't vote, so you scored nothing this round${r.forfeit?' (your points were forfeited)':''}.</div>`:'';
     body.innerHTML = `${ban}${warn}<div class="entries">${r.entries.map((e,i)=>{ const p=player(e.pid);
       return `<div class="entry ${e.pid===r.winner?'win':''} ${e.fx?'rv-'+esc(e.fx):''}" data-entry="${e.id}" style="animation-delay:${i*70}ms"><span>${esc(e.text)}</span>
-        <span class="who">${orbHTML(p.hue,'sm')}<b>${isMe(p.id)?'You':nameHTML(p)}</b><span class="pts">${e.why.map(([c,s])=>`<span class="tag ${c}">${s}</span>`).join('')||'<span class="tag dim">0</span>'}</span></span>
+        <span class="who">${avatarHTML(p,'sm')}<b>${isMe(p.id)?'You':nameHTML(p)}</b><span class="pts">${e.why.map(([c,s])=>`<span class="tag ${c}">${s}</span>`).join('')||'<span class="tag dim">0</span>'}</span></span>
         ${lineActs(S, e, p)}</div>`; }).join('')}</div>`;
     wireLineActs(body);
     if (r.winFx) winFx(r.winFx);
     else if (r.winner && isMe(r.winner)) confetti();
     if (r.winner && isMe(r.winner)) SFX.win(); else SFX.vote();
     const g = r.gain[T.you]; if (g>0) setTimeout(()=>floatAt(document.querySelector('.prow.me .sc'), `+${g}`), 300);
+    // unsays XP on RookieGamers: 5 for playing the round, plus the points it scored.
+    if (r.entries.some(e=>e.pid===T.you)) { T.played++; rgXp(5 + Math.max(0, g|0)); }
     return;
   }
   if (ph==='pick') {
     BG.target=.3;
     const k=S.pick, p=player(k.picker), mine=isMe(k.picker);
     const head = mine ? `<div class="banner"><span class="big">You won. Pick the next topic.</span><span class="muted">5 seconds, or it's General.</span></div>`
-                      : `<div class="banner">${orbHTML(p.hue)}<span class="big">${esc(p.name)} ${k.chosen?'picked':'is picking'} the next topic${k.chosen?'.':'…'}</span></div>`;
+                      : `<div class="banner">${avatarHTML(p)}<span class="big">${esc(p.name)} ${k.chosen?'picked':'is picking'} the next topic${k.chosen?'.':'…'}</span></div>`;
     body.innerHTML = `${head}<div class="picks">${k.opts.map((o,i)=>{
       const cls=`pick ${o.id==='general'?'general':''} ${k.chosen? (k.chosen===o.id?'chosen':'dim'):''}`;
       const inner = o.id==='general' ? `<small>General</small><b>Things you can't unsay</b>` : `<small>${esc(o.pre)}</small><b>${esc(o.subj)}</b>`;
@@ -976,7 +1025,7 @@ function renderStage(S, prev){
   if (ph==='foResults') {
     const r=S.results, top=Math.max(...Object.values(r.tally));
     body.innerHTML = `${vsHTML(S)}<div class="entries">${r.entries.map(e=>{ const p=player(e.pid); const won=r.tally[e.pid]===top && top>0;
-      return `<div class="entry ${won?'win':''}" data-entry="${e.id}"><span>${esc(e.text)}</span><span class="who">${orbHTML(p.hue,'sm')}<b>${isMe(p.id)?'You':nameHTML(p)}</b><span class="pts"><span class="tag gold">${r.tally[e.pid]} vote${r.tally[e.pid]===1?'':'s'}</span></span></span>${lineActs(S, e, p)}</div>`; }).join('')}</div>`;
+      return `<div class="entry ${won?'win':''}" data-entry="${e.id}"><span>${esc(e.text)}</span><span class="who">${avatarHTML(p,'sm')}<b>${isMe(p.id)?'You':nameHTML(p)}</b><span class="pts"><span class="tag gold">${r.tally[e.pid]} vote${r.tally[e.pid]===1?'':'s'}</span></span></span>${lineActs(S, e, p)}</div>`; }).join('')}</div>`;
     wireLineActs(body);
     SFX.vote();
     return;
@@ -984,18 +1033,18 @@ function renderStage(S, prev){
   if (ph==='over') {
     BG.target=.8; BG.warp=1;
     const c=player(S.champ);
-    body.innerHTML = `<div class="champ">${orbHTML(c.hue,'lg')}<span class="label">Champion</span><div class="wordmark holo-text">${isMe(c.id)?'You won.':esc(c.name)}</div>${c.tag||c.title?`<div class="muted">${c.tag?`<span class="gtag">[${esc(c.tag)}]</span>`:''}${c.title?esc(c.title):''}</div>`:''}
+    body.innerHTML = `<div class="champ">${avatarHTML(c,'lg')}<span class="label">Champion</span><div class="wordmark holo-text">${isMe(c.id)?'You won.':esc(c.name)}</div>${c.tag||c.title?`<div class="muted">${c.tag?`<span class="gtag">[${esc(c.tag)}]</span>`:''}${c.title?esc(c.title):''}</div>`:''}
       <div class="muted">${S.fo.votes[S.fo.a]}–${S.fo.votes[S.fo.b]} in the face-off. A new game starts when the clock runs out.</div>
       <div class="actions"><button class="btn prime" type="button" id="againBtn">Start next game now</button><button class="btn" type="button" id="lobbyBtn2">Back to lobby</button></div></div>`;
     $('#againBtn').onclick=()=>sendT({t:'again'});
-    $('#lobbyBtn2').onclick=enterLobby;
+    $('#lobbyBtn2').onclick=backToLobby;
     if (isMe(c.id)) { SFX.win(); confetti(true); } else SFX.vote();
   }
 }
 
 function seatedHTML(S){
   const people = S.players.filter(p=>!p.bot);
-  return people.map(p=>`<span class="seat ${p.connected?'':'away'}">${orbHTML(p.hue,'sm')}<b>${isMe(p.id)?'You':esc(p.name)}</b>${p.id===S.waiting.host?'<span class="tag gold">host</span>':''}</span>`).join('')
+  return people.map(p=>`<span class="seat ${p.connected?'':'away'}">${avatarHTML(p,'sm')}<b>${isMe(p.id)?'You':esc(p.name)}</b>${p.id===S.waiting.host?'<span class="tag gold">host</span>':''}</span>`).join('')
     + (S.waiting.useBots && people.length<5 ? `<span class="seat ghost">+ ${5-people.length} bot${5-people.length>1?'s':''} if nobody else joins</span>` : '');
 }
 function updateStage(S){
@@ -1024,7 +1073,7 @@ function onAnswer(m){
 function renderBoard(S, bump){
   const rows = S.players.slice().sort((a,b)=>b.score-a.score).map(p=>{
     const on = p.status==='in'||p.status==='voted'||p.status.startsWith('+');
-    return `<div class="prow ${isMe(p.id)?'me':''} ${bump&&p.status.startsWith('+')?'bump':''} ${p.connected?'':'away'}">${orbHTML(p.hue,'sm')}<span class="nm">${nameHTML(p, isMe(p.id)?esc(p.name)+' (you)':undefined)}${p.bot?' <span class="botmark">bot</span>':''}${titleHTML(p)}</span><span class="stt ${on?'on':''}">${p.connected?esc(p.status):'away'}</span><span class="sc">${p.score}</span></div>`;
+    return `<div class="prow ${isMe(p.id)?'me':''} ${bump&&p.status.startsWith('+')?'bump':''} ${p.connected?'':'away'}">${avatarHTML(p,'sm')}<span class="nm">${nameHTML(p, isMe(p.id)?esc(p.name)+' (you)':undefined)}${p.bot?' <span class="botmark">bot</span>':''}${titleHTML(p)}</span><span class="stt ${on?'on':''}">${p.connected?esc(p.status):'away'}</span><span class="sc">${p.score}</span></div>`;
   }).join('');
   $('#board').innerHTML = rows;
 }
@@ -1129,18 +1178,56 @@ const MUSIC = (() => {
   // Browsers only allow playback after a click, so the first start happens from one.
   const play = () => { if (on) { wire(); el.play().catch(()=>{}); } };
   btn.addEventListener('click', () => { on = !on; store.set('unsays.music', on); paint(); if (on) play(); else el.pause(); });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) el.pause(); else if (on && started) play(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) el.pause(); else if (on && started && !hushed) play(); });
   let started = false;
+  let hushed = false;
   paint();
-  return { start(){ started = true; play(); } };
+  return { start(){ started = true; if (!hushed) play(); }, get on(){ return on; },
+    hush(m){ hushed = m; if (m) el.pause(); else if (on && started) play(); } };
 })();
+
+/* ======================= RookieGamers sign-in ======================= */
+// Signed in to RookieGamers (or already linked on this browser): skip the name screen and play as that
+// account. Otherwise the intro offers "Log in with RookieGamers" or a guest name.
+function enterAs(me){
+  ME.name = me.name; store.set('unsays.name', ME.name);
+  const t = hashTable(); if (t) joinTable(t); else enterLobby();
+}
+// Browsers only start sound after a click, so a player who skipped the intro gets it on their first one.
+function soundOnFirstClick(){
+  const go = () => { SFX.ensure(); MUSIC.start(); removeEventListener('pointerdown', go, true); removeEventListener('keydown', go, true); };
+  addEventListener('pointerdown', go, true); addEventListener('keydown', go, true);
+}
+$('#rgLoginBtn').addEventListener('click', async ()=>{
+  SFX.ensure(); MUSIC.start();
+  const b = $('#rgLoginBtn'); b.disabled = true;
+  try {
+    const me = await signInRG({ login:true }).catch(()=>null);
+    if (me && me.rg) { SFX.start(); BG.warp=1; enterAs(me); }
+    else toast('RookieGamers login didn\'t finish. Try again, or play as a guest.');
+  } finally { b.disabled = false; }
+});
+// Signing in or out on RookieGamers while playing (in the portal) follows along.
+rgOnUser(async u => {
+  if (u && !(ACCOUNT.me && ACCOUNT.me.rg && ACCOUNT.me.rg.id === u.id)) { const me = await signInRG().catch(()=>null); if (me && me.rg && !$('#intro').hidden) enterAs(me); }
+});
+// The portal's sound button, an ad on screen or a hidden tab mute music and effects.
+rgAudio(m => { SFX.hush(m); MUSIC.hush(m); });
 
 /* boot */
 setMuteLabels();
-loadMe().then(me=>{
+(async () => {
+  const mode = await rgStart();
+  $('#rgRow').hidden = !mode;
+  let me = null;
+  if (mode && await rgUser()) me = await signInRG().catch(()=>null);
+  if (!me || !me.rg) me = await loadMe();
+  $('#introCard').classList.remove('checking');
+  rgLoaded();
+  if (me && me.rg && (!INTENT || !hashTable())) { soundOnFirstClick(); return enterAs(me); }
   // Coming back from Stripe or another page with a saved name: skip straight to the lobby.
   if (INTENT && ME.name && !hashTable()) enterLobby();
-});
+})();
 </script>
 </body>
 </html>

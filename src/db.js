@@ -43,11 +43,18 @@ const COLUMNS = [
   'ALTER TABLE players ADD COLUMN best_streak INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE guilds ADD COLUMN icon TEXT',
   'ALTER TABLE guilds ADD COLUMN color TEXT',
+  // RookieGamers: the linked portal player, and their avatar, frame and Hall of Fame title from there.
+  'ALTER TABLE players ADD COLUMN rg_id TEXT',
+  'ALTER TABLE players ADD COLUMN rg_avatar TEXT',
+  'ALTER TABLE players ADD COLUMN rg_frame TEXT',
+  'ALTER TABLE players ADD COLUMN rg_title TEXT',
 ];
+const INDEXES = ['CREATE UNIQUE INDEX IF NOT EXISTS players_rg ON players(rg_id)'];
 
 export async function migrate(DB) {
   await DB.batch(SCHEMA.map(s => DB.prepare(s)));
   for (const c of COLUMNS) await DB.prepare(c).run().catch(e => { if (!/duplicate column/i.test(String(e))) throw e; });
+  for (const i of INDEXES) await DB.prepare(i).run();
 }
 
 let ready = null;
@@ -79,6 +86,16 @@ export const getPlayer = (DB, id) => DB.prepare('SELECT * FROM players WHERE id 
 
 export function guildActive(g) { return !!g && g.pass_until > now(); }
 
+// A signed-in account (not a guest): linked to RookieGamers, or signed in before RookieGamers sign-in existed.
+export const isAccount = p => !!(p && (p.rg_id || p.email || p.google_sub));
+
+// The frame drawn around a player's avatar: an unsays frame they equipped, else their RookieGamers frame.
+// RookieGamers frame ids get an "rg-" prefix so they never clash with unsays's own.
+export function frameFor(p, eq, u) {
+  if (eq.frame && u.frame.has(eq.frame)) return eq.frame;
+  return p.rg_frame && /^[a-z0-9-]{1,24}$/.test(p.rg_frame) ? 'rg-' + p.rg_frame : null;
+}
+
 // The view a Table needs to dress a player: guild tag, equipped flair and usable emoji.
 export async function tableProfile(DB, id) {
   await claimDrop(DB, id);
@@ -93,9 +110,10 @@ export async function tableProfile(DB, id) {
   const eq = safeJSON(p.equip);
   const ok = (k, v) => v && u[k].has(v) ? v : null;
   return {
-    id, account: !!(p.email || p.google_sub), gifts: p.gifts,
+    id, account: isAccount(p), gifts: p.gifts, rgId: p.rg_id || null, rgName: p.rg_id ? p.name : null, avatar: p.rg_avatar || null,
     guild: guildActive(g) ? { id: g.id, tag: g.tag } : null,
-    flair: { name: ok('name', eq.name), win: ok('win', eq.win), reveal: ok('reveal', eq.reveal), title: eq.title && u.title.has(eq.title) ? titleText(eq.title) : null },
+    flair: { name: ok('name', eq.name), win: ok('win', eq.win), reveal: ok('reveal', eq.reveal), title: eq.title && u.title.has(eq.title) ? titleText(eq.title) : p.rg_title || null,
+      frame: frameFor(p, eq, u) },
     emoji: [...u.emoji], big: [...u.big],
   };
 }
@@ -128,9 +146,10 @@ export async function profile(DB, id) {
   }
   const eq = safeJSON(p.equip);
   return {
-    id, name: p.name, hue: p.hue, email: p.email, signedIn: !!(p.email || p.google_sub), gifts: p.gifts,
+    id, name: p.name, hue: p.hue, email: p.email, signedIn: isAccount(p), gifts: p.gifts,
+    rg: p.rg_id ? { id: p.rg_id, avatar: p.rg_avatar, frame: p.rg_frame, title: p.rg_title } : null, avatar: p.rg_avatar || null, frame: frameFor(p, eq, u),
     owned: ownedIds, earnedTitles: earned, equip: eq,
-    unlocked: { name: [...u.name], win: [...u.win], reveal: [...u.reveal], title: [...u.title], emoji: [...u.emoji] },
+    unlocked: { name: [...u.name], win: [...u.win], reveal: [...u.reveal], title: [...u.title], frame: [...u.frame], emoji: [...u.emoji] },
     month: m, score: score || { points: 0, round_wins: 0, game_wins: 0 }, giftsReceived: received.n,
     checkin: { today: p.checkin_day === dayKey(), streak: liveStreak(p), best: p.best_streak, days: days.results }, friends,
     earned: p.earned, drop: p.drop_until > now() ? { until: p.drop_until, perDay: DROP.perDay, claimedToday: p.drop_day === dayKey(), dropped } : null,
@@ -143,7 +162,7 @@ export async function setEquip(DB, id, want) {
   const earned = (await DB.prepare('SELECT title FROM titles WHERE player_id = ?').bind(id).all()).results.map(r => r.title);
   const u = unlocked(owned, earned);
   const eq = {};
-  for (const k of ['name', 'win', 'reveal', 'title']) if (want[k] && u[k].has(want[k])) eq[k] = want[k];
+  for (const k of ['name', 'win', 'reveal', 'title', 'frame']) if (want[k] && u[k].has(want[k])) eq[k] = want[k];
   await DB.prepare('UPDATE players SET equip = ? WHERE id = ?').bind(JSON.stringify(eq), id).run();
   return eq;
 }

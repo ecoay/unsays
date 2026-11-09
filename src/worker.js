@@ -1,7 +1,8 @@
 import { Table } from './table.js';
 import { Lobby } from './lobby.js';
-import { db, profile, getPlayer, setEquip, exchange, checkIn, newId, now, monthKey, prevMonth, archiveMonth, topPlayers, topGuilds, topGifted } from './db.js';
-import { sessionPlayer, ensurePlayer, signOut, providers, googleStart, googleCallback, emailStart, emailVerify } from './auth.js';
+import { db, profile, getPlayer, isAccount, setEquip, exchange, checkIn, newId, now, monthKey, prevMonth, archiveMonth, topPlayers, topGuilds, topGifted } from './db.js';
+import { sessionPlayer, ensurePlayer, signOut, rgSignIn } from './auth.js';
+import { rgURL } from './rg.js';
 import { stripeReady, checkout, portal, verifySignature, handleEvent } from './stripe.js';
 import { page, robots, sitemap, llms, llmsFull, canonicalHost } from './pages.js';
 import { ICONS, DEFAULT_ICON } from '../public/guild-icons.js';
@@ -60,18 +61,26 @@ async function api(req, env, DB, url) {
   if (path === '/api/me' && method === 'GET') {
     const pid = await sessionPlayer(DB, req);
     const prof = pid && await profile(DB, pid);
-    return json({ me: prof || null, providers: providers(env), store: stripeReady(env) });
+    return json({ me: prof || null, rg: rgURL(env), store: stripeReady(env) });
+  }
+
+  // RookieGamers sign-in: the browser hands over the SDK's player token, we check it and set the session.
+  if (path === '/api/rg/session' && method === 'POST') {
+    const r = await rgSignIn(DB, env, req, String((await readJSON(req)).token || ''));
+    if (r.error) return json({ error: r.error }, r.status);
+    return json({ me: await profile(DB, r.id), rg: rgURL(env), store: stripeReady(env) }, 200, r.cookie);
   }
 
   // Everything below acts for a player, creating a guest account on first use.
   const { id: pid, cookie } = await ensurePlayer(DB, req);
   const reply = (data, status) => json(data, status, cookie);
-  const me = async () => ({ me: await profile(DB, pid), providers: providers(env), store: stripeReady(env) });
+  const me = async () => ({ me: await profile(DB, pid), rg: rgURL(env), store: stripeReady(env) });
 
   if (path === '/api/me' && method === 'POST') {
     const b = await readJSON(req);
     const name = cleanText(b.name, 18);
-    if (name) await DB.prepare('UPDATE players SET name = ?, hue = ?, seen_at = ? WHERE id = ?').bind(name, Math.abs(Number(b.hue) | 0) % 360, now(), pid).run();
+    // RookieGamers players keep their RookieGamers name; guests pick one.
+    if (name) await DB.prepare('UPDATE players SET name = CASE WHEN rg_id IS NULL THEN ? ELSE name END, hue = ?, seen_at = ? WHERE id = ?').bind(name, Math.abs(Number(b.hue) | 0) % 360, now(), pid).run();
     return reply(await me());
   }
   if (path === '/api/checkin' && method === 'POST') {
@@ -84,17 +93,11 @@ async function api(req, env, DB, url) {
   }
   if (path === '/api/me/equip' && method === 'POST') { await setEquip(DB, pid, await readJSON(req)); return reply(await me()); }
   if (path === '/api/auth/signout' && method === 'POST') return json({ ok: true }, 200, await signOut(DB, req));
-  if (path === '/api/auth/email' && method === 'POST') {
-    if (!providers(env).email) return reply({ error: 'Email sign-in isn\'t set up yet.' }, 503);
-    const r = await emailStart(DB, env, req, pid);
-    return reply(r, r.status);
-  }
 
   if (path === '/api/checkout' && method === 'POST') {
     if (!stripeReady(env)) return reply({ error: 'The store opens soon.' }, 503);
     const p = await getPlayer(DB, pid);
-    const pv = providers(env);
-    if ((pv.google || pv.email) && !p.email && !p.google_sub) return reply({ error: 'Sign in first so your purchase follows you to any device.', signin: true }, 401);
+    if (!isAccount(p)) return reply({ error: 'Log in with RookieGamers first so your purchase follows you to any device.', signin: true }, 401);
     const r = await checkout(DB, env, req, pid, String((await readJSON(req)).item || ''));
     return reply(r, r.status);
   }
@@ -198,9 +201,6 @@ export default {
       if (!DB) return json({ error: 'Accounts are offline.' }, 503);
       try { return await api(req, env, DB, url); } catch (e) { console.error(e); return json({ error: 'Something went wrong. Try again.' }, 500); }
     }
-    if (path === '/auth/google') return providers(env).google ? googleStart(env, req) : Response.redirect(url.origin + '/', 302);
-    if (path === '/auth/google/callback') return googleCallback(DB, env, req);
-    if (path === '/auth/email') return emailVerify(DB, req);
 
     // The canonical site is unsays.com. Other hosts (workers.dev, previews) stay out of search.
     const canonical = canonicalHost(env);
@@ -215,6 +215,10 @@ export default {
     if (!res) {
       res = await env.ASSETS.fetch(req);
       if (res.status === 404) res = await page('/404', url, env, DB);
+      // The game page loads the RookieGamers SDK from rookiegamers.com; RG_URL points it at another portal (local dev, staging).
+      else if (path === '/' && rgURL(env) !== 'https://rookiegamers.com') {
+        res = new HTMLRewriter().on('script#rg-sdk', { element: e => e.setAttribute('src', rgURL(env) + '/sdk/v1.js') }).transform(res);
+      }
     }
     if (indexable) return res;
     const out = new Response(res.body, res);
